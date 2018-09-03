@@ -1,0 +1,25 @@
+{
+  "name": "Winservices",
+  "version": "1.0.0",
+  "description": "Windows Disk low level binding",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "install": "node-gyp rebuild"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SlimIO/Winservices.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "gypfile": true,
+  "bugs": {
+    "url": "https://github.com/SlimIO/Winservices/issues"
+  },
+  "homepage": "https://github.com/SlimIO/Winservices#readme",
+  "dependencies": {
+    "node-addon-api": "^1.4.0"
+  }
+}
