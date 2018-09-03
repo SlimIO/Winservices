@@ -15,11 +15,10 @@ typedef std::unordered_map<DWORD, std::string> PROCESSESMAP;
  * Retrieve Process Name and ID
  */ 
 BOOL GetProcessNameAndId(PROCESSESMAP* procMap) {
-    HANDLE hProcessSnap;
     PROCESSENTRY32 pe32;
  
     // Take a snapshot of all processes in the system.
-    hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    HANDLE hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (hProcessSnap == INVALID_HANDLE_VALUE) {
         return false;
     }
@@ -44,7 +43,7 @@ BOOL GetProcessNameAndId(PROCESSESMAP* procMap) {
  
 
 /*
- * Retrieve Windows Services
+ * Enumerate Windows Services
  */
 Value enumServicesStatus(const CallbackInfo& info) {
     Env env = info.Env();
@@ -90,8 +89,7 @@ Value enumServicesStatus(const CallbackInfo& info) {
         NULL
     );
     if (!status) {
-         Error::New(env, "Execution of EnumServicesStatusEx failed").ThrowAsJavaScriptException();
-
+        Error::New(env, "Execution of EnumServicesStatusEx failed").ThrowAsJavaScriptException();
         return env.Null();
     }
     
@@ -112,12 +110,7 @@ Value enumServicesStatus(const CallbackInfo& info) {
 
         Object statusProcess = Object::New(env);
         statusProcess.Set("id", processId);
-        if (gPnresult) {
-            statusProcess.Set("name", processesMap->find(processId)->second.c_str());
-        }
-        else {
-            statusProcess.Set("name", "");
-        }
+        statusProcess.Set("name", gPnresult ? processesMap->find(processId)->second.c_str() : "");
         statusProcess.Set("currentState", service.ServiceStatusProcess.dwCurrentState);
         statusProcess.Set("serviceType", service.ServiceStatusProcess.dwServiceType);
         statusProcess.Set("checkPoint", service.ServiceStatusProcess.dwCheckPoint);
@@ -147,14 +140,12 @@ Value getServiceConfiguration(const CallbackInfo& info) {
         // Check argument length!
     if (info.Length() < 1) {
         Error::New(env, "Wrong number of argument provided!").ThrowAsJavaScriptException();
-
         return env.Null();
     }
 
     // DriveName should be typeof string
     if (!info[0].IsString()) {
         Error::New(env, "argument serviceName should be typeof string!").ThrowAsJavaScriptException();
-
         return env.Null();
     }
 
@@ -251,8 +242,7 @@ Value getServiceConfiguration(const CallbackInfo& info) {
 /*
  * Convert GUID to std::string
  */
-std::string GuidToString(GUID guid)
-{
+string GuidToString(GUID guid) {
 	char guid_cstr[39];
 	snprintf(guid_cstr, sizeof(guid_cstr),
 	         "{%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x}",
@@ -272,14 +262,12 @@ Value getServiceTriggers(const CallbackInfo& info) {
         // Check argument length!
     if (info.Length() < 1) {
         Error::New(env, "Wrong number of argument provided!").ThrowAsJavaScriptException();
-
         return env.Null();
     }
 
     // DriveName should be typeof string
     if (!info[0].IsString()) {
         Error::New(env, "argument serviceName should be typeof string!").ThrowAsJavaScriptException();
-
         return env.Null();
     }
 
@@ -357,8 +345,6 @@ Value getServiceTriggers(const CallbackInfo& info) {
     cleanup:
         CloseServiceHandle(schService); 
         CloseServiceHandle(schSCManager);
-
-    printf("cleanup exiting \n");
 
     return ret;
 }
