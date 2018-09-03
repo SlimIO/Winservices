@@ -1,5 +1,5 @@
 {
-  "name": "Winservices",
+  "name": "@slimio/winservices",
   "version": "1.0.0",
   "description": "Windows Disk low level binding",
   "main": "index.js",
