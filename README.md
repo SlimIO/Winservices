@@ -23,4 +23,8 @@ $ node-gyp build
 - Prepare npm package (export with bindings).
 - Add prebuilt (prebuildify)
 - Add AsyncWorker for all methods and return Promise Object!
-- Finish work around triggers
+- Finish getServiceTriggers() struct
+
+## Know issue(s)
+
+- getServiceTriggers() end the script life with no errors for somes services.
