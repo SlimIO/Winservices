@@ -23,6 +23,8 @@ $ node-gyp build
 - Prepare npm package (export with bindings).
 - Add prebuilt (prebuildify)
 - Add AsyncWorker for all methods and return Promise Object!
+- Add EnumDependentServices method binding.
+- Add a SC Class manager to simplify frontal bindings.
 - Finish getServiceTriggers() struct
 
 ## Know issue(s)
