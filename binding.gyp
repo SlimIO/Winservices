@@ -3,7 +3,8 @@
         {
             "target_name": "winservices",
             "sources": [
-                "winservices.cpp"
+                "winservices.cpp",
+                "src/SCManager.cpp"
             ],
             "include_dirs": [
                 "include",

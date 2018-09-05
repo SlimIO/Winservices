@@ -5,16 +5,24 @@ console.time("enumServicesStatus");
 const services = winservices.enumServicesStatus();
 console.timeEnd("enumServicesStatus");
 
+console.log(services.length);
+
 for (const service of services) {
-    if (service.name === "Appinfo") {
-        continue;
-    }
+    // console.log(service);
     console.log("\n");
-    console.log(`service name: ${service.name}`);
 
-    console.time("getServiceTriggers");
-    const info = winservices.getServiceTriggers(service.name);
-    console.timeEnd("getServiceTriggers");
+    console.time("getServiceConfiguration");
+    const config = winservices.getServiceConfiguration(service.name);
+    console.timeEnd("getServiceConfiguration");
+    console.log(config);
+    console.log("\n");
 
-    console.log(info);
+    break;
+
+    // console.time("getServiceTriggers");
+    // const perf = winservices.getServiceTriggers(service.name);
+    // console.timeEnd("getServiceTriggers");
+
+    // console.log(perf);
+    // console.log("\n\n");
 }
