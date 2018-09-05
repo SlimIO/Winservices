@@ -3,6 +3,7 @@
 #include "SCManager.h"
 #include "napi.h"
 #include <unordered_map>
+#include <iostream>
 #include <string>
 
 using namespace std;
@@ -211,7 +212,7 @@ Value getServiceConfiguration(const CallbackInfo& info) {
     }
 
     // Service description
-    // LPSERVICE_DESCRIPTIONA lpsd = manager.ServiceConfig2<LPSERVICE_DESCRIPTIONA>(SERVICE_CONFIG_DESCRIPTION);
+    LPSERVICE_DESCRIPTIONA lpsd = manager.ServiceConfig2<LPSERVICE_DESCRIPTIONA>(SERVICE_CONFIG_DESCRIPTION, true);
 
     // Setup properties
     ret.Set("type", serviceConfig.lpsc->dwServiceType);
@@ -220,9 +221,9 @@ Value getServiceConfiguration(const CallbackInfo& info) {
     ret.Set("binaryPath", serviceConfig.lpsc->lpBinaryPathName);
     ret.Set("account", serviceConfig.lpsc->lpServiceStartName);
 
-    // if (lpsd != NULL && lpsd->lpDescription != NULL) {
-    //     ret.Set("description", lpsd->lpDescription);
-    // }
+    if (lpsd != NULL && lpsd->lpDescription != NULL) {
+        ret.Set("description", lpsd->lpDescription);
+    }
     if (serviceConfig.lpsc->lpLoadOrderGroup != NULL && lstrcmp(serviceConfig.lpsc->lpLoadOrderGroup, TEXT("")) != 0) {
         ret.Set("loadOrderGroup", serviceConfig.lpsc->lpLoadOrderGroup);
     }
@@ -236,9 +237,9 @@ Value getServiceConfiguration(const CallbackInfo& info) {
     cleanup:
     // Free handle/memory
     LocalFree(serviceConfig.lpsc); 
-    // if (lpsd != NULL) {
-    //     LocalFree(lpsd);
-    // }
+    if (lpsd != NULL) {
+        LocalFree(lpsd);
+    }
     manager.Close();
 
     return ret;
@@ -255,7 +256,8 @@ Value getServiceTriggers(const CallbackInfo& info) {
     // Instanciate Variables
     SCManager manager;
     BOOL success;
-    DWORD dwBytesNeeded, cbBufSize, dwError;
+    SERVICE_TRIGGER_INFO triggers;
+    DWORD dwBytesNeeded, cbBufSize;
 
     // Check if there is less than one argument, if then throw a JavaScript exception
     if (info.Length() < 1) {
@@ -286,39 +288,45 @@ Value getServiceTriggers(const CallbackInfo& info) {
         return env.Null();
     }
 
-    DWORD bytesNeeded = 0;
-    SERVICE_TRIGGER_INFO triggers;
-    Array ret = Array::New(env);
-
+    // Query for TRIGGER INFO
     success = QueryServiceConfig2A(manager.service, SERVICE_CONFIG_TRIGGER_INFO, NULL, 0, &dwBytesNeeded);
     if (!success) {
-        dwError = GetLastError();
-        if(ERROR_INSUFFICIENT_BUFFER == dwError) {
-            cbBufSize = dwBytesNeeded;
-        }
-        else {
+        if(ERROR_INSUFFICIENT_BUFFER != GetLastError()) {
             Error::New(env, "QueryServiceConfig2 (1) failed").ThrowAsJavaScriptException();
-            printf("QueryServiceConfig2 (1) failed (%d)\n", dwError);
-            goto cleanup; 
+            manager.Close();
+
+            return env.Null();
         }
+        cbBufSize = dwBytesNeeded;
     }
 
     if (!QueryServiceConfig2(manager.service, SERVICE_CONFIG_TRIGGER_INFO, (LPBYTE) &triggers, cbBufSize, &dwBytesNeeded)) {
         Error::New(env, "QueryServiceConfig2 (2) failed").ThrowAsJavaScriptException();
-        printf("QueryServiceConfig2 (2) failed (%d)\n", GetLastError());
-        goto cleanup;
+        manager.Close();
+
+        return env.Null();
+    }
+    
+    Array ret = Array::New(env);
+    if (triggers.cTriggers == 0) { // If there is no rows, return an empty array!
+        manager.Close();
+        return ret;
     }
 
-    if (triggers.cTriggers == 0) {
-        goto cleanup;
-    }
+    cout << "triggers count: " << triggers.cTriggers << endl;
 
+    // Instanciate variable type
+    string guid;
+    Object trigger;
+    Array dataItems;
     for (DWORD i = 0; i < triggers.cTriggers; i++) {
         SERVICE_TRIGGER serviceTrigger = triggers.pTriggers[i];
-        std::string guid = guidToString(*serviceTrigger.pTriggerSubtype);
+        guid = guidToString(*serviceTrigger.pTriggerSubtype);
 
-        Object trigger = Object::New(env);
-        Array dataItems = Array::New(env);
+        cout << "guid: " << guid << endl;
+
+        trigger = Object::New(env);
+        dataItems = Array::New(env);
 
         trigger.Set("type", serviceTrigger.dwTriggerType);
         trigger.Set("action", serviceTrigger.dwAction);
@@ -335,9 +343,7 @@ Value getServiceTriggers(const CallbackInfo& info) {
         //     specificDataItems.Set("dataType", pServiceTrigger.dwDataType);
         // }
     }
-
-    cleanup:
-        manager.Close();
+    cout << "end method" << endl;
 
     return ret;
 }

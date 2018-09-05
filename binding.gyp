@@ -3,8 +3,10 @@
         {
             "target_name": "winservices",
             "sources": [
-                "winservices.cpp",
-                "src/SCManager.cpp"
+                "winservices.cpp"
+            ],
+            "libraries": [
+                "Advapi32.lib"
             ],
             "include_dirs": [
                 "include",
