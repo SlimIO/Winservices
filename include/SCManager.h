@@ -21,7 +21,7 @@ class SCManager {
         SCManager();
         bool Open(DWORD dwDesiredAccess);
         bool Close();
-        bool DeclareService(string serviceName);
+        bool DeclareService(string serviceName, DWORD dwAccessRight);
         EnumServicesResponse EnumServicesStatus(DWORD serviceState, DWORD* servicesNum);
         ServiceConfigResponse ServiceConfig();
         template<typename T> T ServiceConfig2(DWORD dwInfoLevel, bool allocate);
@@ -81,8 +81,9 @@ bool SCManager::Close() {
  * @doc: https://docs.microsoft.com/en-us/windows/desktop/api/winsvc/nf-winsvc-openservicea
  * @note: OpenService "A" is used to support char*
  */
-bool SCManager::DeclareService(string serviceName) {
-    service = OpenServiceA(manager, serviceName.c_str(), SERVICE_QUERY_CONFIG); 
+bool SCManager::DeclareService(string serviceName, DWORD dwAccessRight) {
+    // SERVICE_QUERY_CONFIG
+    service = OpenServiceA(manager, serviceName.c_str(), dwAccessRight); 
     if (service == NULL) { 
         Close();
         return false;

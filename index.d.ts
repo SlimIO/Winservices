@@ -10,13 +10,13 @@ declare namespace Winservices {
         name: string,
         displayName: string;
         process: {
-            id: number;
-            name: string;
+            id?: number;
+            name?: string;
             currentState: number;
             serviceType: number;
             checkPoint: number;
             controlsAccepted: number;
-            serviceFlags: number;
+            serviceFlags?: number;
             serviceSpecificExitCode: number;
             waitHint: number;
             win32ExitCode: number;
@@ -50,6 +50,7 @@ declare namespace Winservices {
     export function enumServicesStatus(desiredState?: ServiceState): Service[];
     export function getServiceConfiguration(serviceName: string): ServiceInformation;
     export function getServiceTriggers(serviceName: string): ServiceTrigger[];
+    export function enumDependentServices(serviceName: string): Service[];
 }
 
 export as namespace Winservices;
