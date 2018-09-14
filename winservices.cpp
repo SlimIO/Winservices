@@ -2,6 +2,7 @@
 #include <tlhelp32.h>
 #include "SCManager.h"
 #include "napi.h"
+#include <iostream>
 #include <unordered_map>
 #include <string>
 
@@ -306,28 +307,26 @@ Value getServiceTriggers(const CallbackInfo& info) {
         return env.Null();
     }
     
-    Array ret = Array::New(env);
-    if (triggers.cTriggers == 0) { // If there is no rows, return an empty array!
-        manager.Close();
-        return ret;
-    }
+    Array ret = Array::New(env, triggers.cTriggers);
+    cout << "triggers len: " << triggers.cTriggers << endl;
 
-    // Instanciate variable type
-    for (DWORD i = 0; i < triggers.cTriggers; i++) {
-        HandleScope scope(info.Env());
-        SERVICE_TRIGGER serviceTrigger = triggers.pTriggers[i];
-        string guid = guidToString(*serviceTrigger.pTriggerSubtype);
-
+    PSERVICE_TRIGGER currTrigger = triggers.pTriggers;
+    for (unsigned i = 0; i < triggers.cTriggers; ++i, currTrigger++) {
         Object trigger = Object::New(info.Env());
-        Array dataItems = Array::New(info.Env());
+        // Array dataItems = Array::New(info.Env());
 
-        trigger.Set("type", serviceTrigger.dwTriggerType);
-        trigger.Set("action", serviceTrigger.dwAction);
-        trigger.Set("dataItems", dataItems);
+        cout << "dwTriggerType: " << currTrigger->dwTriggerType << endl;
+        cout << "dwAction: " << currTrigger->dwAction << endl;
+
+        trigger.Set("type", currTrigger->dwTriggerType);
+        trigger.Set("action", currTrigger->dwAction);
+        // trigger.Set("dataItems", dataItems);
+
+        string guid = guidToString(*currTrigger->pTriggerSubtype);
+        cout << "guid: " << guid << endl;
         trigger.Set("guid", guid.c_str());
 
         ret[i] = trigger;
-
         // for (DWORD j = 0; j < serviceTrigger.cDataItems; j++) {
         //     SERVICE_TRIGGER_SPECIFIC_DATA_ITEM pServiceTrigger = serviceTrigger.pDataItems[j];
         //     Object specificDataItems = Object::New(env);
@@ -339,6 +338,8 @@ Value getServiceTriggers(const CallbackInfo& info) {
 
     // Cleanup ressources!
     manager.Close();
+
+    cout << "byebye!" << endl;
 
     return ret;
 }

@@ -6,7 +6,7 @@ const services = winservices.enumServicesStatus();
 console.timeEnd("enumServicesStatus");
 
 for (const service of services) {
-    console.log(service.name);
+    console.log(service);
     // console.time("getServiceConfiguration");
     // const config = winservices.getServiceConfiguration(service.name);
     // console.timeEnd("getServiceConfiguration");
