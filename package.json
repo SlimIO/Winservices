@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/SlimIO/Winservices#readme",
   "dependencies": {
+    "bindings": "^1.3.0",
     "node-addon-api": "^1.4.0"
   }
 }
