@@ -1,32 +1,28 @@
 # Winservices
 Windows Services - Node.JS low level binding
 
-## Requirement
+## How to build the project
 
-- Windows build tools
-- Node-gyp
+Before building the project, be sure to get the following npm package installed:
 
-Take a look at: https://www.npmjs.com/package/windows-build-tools
+- Install (or upgrade to) NodeJS v10+ and npm v6+
+- [Windows build tools](https://www.npmjs.com/package/windows-build-tools)
 
-## Starter guide
-
-To setup the project on your computer
+Then, just run normal npm install command:
 
 ```bash
 $ npm install
-$ node-gyp configure
-$ node-gyp build
 ```
 
-## TODO
+## Available commands
 
-- Prepare npm package (export with bindings).
-- Add prebuilt (prebuildify)
-- Add AsyncWorker for all methods and return Promise Object!
-- Add EnumDependentServices method binding.
-- Add a SC Class manager to simplify frontal bindings.
-- Finish getServiceTriggers() struct
+All projects commands are described here:
 
-## Know issue(s)
+| command | description |
+| --- | --- |
+| npm run prebuild | Generate addon prebuild |
+| npm run doc | Generate JSDoc .HTML documentation (in the /docs root directory) |
+| npm run coverage | Generate coverage of tests |
+| npm run report | Generate .HTML report of tests coverage |
 
-- getServiceTriggers() end the script life with no errors for somes services.
+> the report command have to be triggered after the coverage command.
