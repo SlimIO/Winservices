@@ -3,12 +3,13 @@
 
 #include <windows.h>
 #include <string>
+#include <iostream>
 
 using namespace std;
 
 struct EnumServicesResponse {
-    bool status;
-    PBYTE lpBytes;
+    bool status = true;
+    ENUM_SERVICE_STATUS_PROCESS *lpBytes;
 };
 
 struct ServiceConfigResponse {
@@ -99,25 +100,31 @@ bool SCManager::DeclareService(string serviceName, DWORD dwAccessRight) {
  */
 EnumServicesResponse SCManager::EnumServicesStatus(DWORD serviceState, DWORD* servicesNum) {
     // Instanciate Variables
+    void* buf = NULL;
+    DWORD bufSize = 0;
     DWORD bytesNeeded = 0;
     EnumServicesResponse ret;
 
-    // Made a first call to get bytesNeeded & servicesNum
-    EnumServicesStatusExA(
-        manager, SC_ENUM_PROCESS_INFO, SERVICE_WIN32, serviceState, NULL, 0, &bytesNeeded, servicesNum, NULL, NULL
-    );
-    
-    // Allocate Memory for lpBytes
-    ret.lpBytes = (PBYTE) malloc(bytesNeeded);
-    ret.status = EnumServicesStatusExA(
-        manager, SC_ENUM_PROCESS_INFO, SERVICE_WIN32, serviceState, ret.lpBytes, bytesNeeded, &bytesNeeded, servicesNum, NULL, NULL
-    );
+    for(;;) {
+        // Made a first call to get bytesNeeded & servicesNum
+        ret.status = EnumServicesStatusExA(
+            manager, SC_ENUM_PROCESS_INFO, SERVICE_WIN32, serviceState, (LPBYTE) buf, bufSize, &bytesNeeded, servicesNum, NULL, NULL
+        );
 
-    if (!ret.status) {
-        Close();
+        if (ret.status) {
+            ret.lpBytes = (ENUM_SERVICE_STATUS_PROCESS*) buf;
+            return ret;
+        }
+        if (ERROR_MORE_DATA != GetLastError()) {
+            free(buf);
+            Close();
+            return ret;
+        }
+
+        bufSize += bytesNeeded;
+        free(buf);
+        buf = malloc(bufSize);
     }
-
-    return ret;
 }
 
 // Query Service Config
