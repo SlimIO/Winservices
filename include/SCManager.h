@@ -156,9 +156,8 @@ T SCManager::ServiceConfig2(DWORD dwInfoLevel, bool allocate) {
     T lpsd;
     DWORD dwBytesNeeded, cbBufSize;
 
-    if(!QueryServiceConfig2A(service, dwInfoLevel, NULL, 0, &dwBytesNeeded)) {
+    if(!QueryServiceConfig2(service, dwInfoLevel, NULL, 0, &dwBytesNeeded)) {
         if(ERROR_INSUFFICIENT_BUFFER != GetLastError()) {
-            Close();
             return NULL;
         }
         cbBufSize = dwBytesNeeded;
@@ -167,8 +166,7 @@ T SCManager::ServiceConfig2(DWORD dwInfoLevel, bool allocate) {
         }
     }
  
-    if (!QueryServiceConfig2A(service, dwInfoLevel, (LPBYTE) &lpsd, cbBufSize, &dwBytesNeeded)) {
-        Close();
+    if (!QueryServiceConfig2(service, dwInfoLevel, (LPBYTE) &lpsd, cbBufSize, &dwBytesNeeded)) {
         return NULL;
     }
 

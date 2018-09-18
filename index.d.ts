@@ -29,7 +29,6 @@ declare namespace Winservices {
         errorControl: number;
         binaryPath: string;
         account: string;
-        description?: string;
         loadOrderGroup?: string;
         tagId?: number;
         dependencies?: string;
