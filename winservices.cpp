@@ -3,6 +3,8 @@
 #include "SCManager.h"
 #include "napi.h"
 #include <iostream>
+#include <iomanip>
+#include <sstream>
 #include <unordered_map>
 #include <string>
 
@@ -23,6 +25,16 @@ string guidToString(GUID guid) {
 	         guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
 
 	return string(guid_cstr);
+}
+
+/*
+ * Retrieve last message error with code of GetLastError()
+ */
+string getLastErrorMessage() {
+    char err[256];
+    FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(),
+                MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), err, 255, NULL);
+    return string(err);
 }
 
 /**
@@ -82,85 +94,131 @@ DWORD getServiceState(int32_t desiredState) {
 
     return state;
 }
- 
+
 /*
  * Enumerate Windows Services
  * 
  * @header: windows.h
  */
-Value enumServicesStatus(const CallbackInfo& info) {
-    Env env = info.Env();
+class EnumServicesWorker : public AsyncWorker {
+    public:
+        EnumServicesWorker(Function& callback, DWORD serviceState) : AsyncWorker(callback), serviceState(serviceState) {}
+        ~EnumServicesWorker() {}
 
-    // Instanciate Variables
-    BOOL success;
-    SCManager manager;
-    DWORD servicesNum;
-    DWORD serviceState = SERVICE_STATE_ALL;
+    private:
+        DWORD serviceState;
+        ENUM_SERVICE_STATUS_PROCESS *lpServiceStatus;
+        PROCESSESMAP *processesMap;
+        DWORD servicesNum;
 
-    // Check if there is less than one argument, if then throw a JavaScript exception
-    if (info.Length() == 1) {
-        if (!info[0].IsNumber()) {
-            Error::New(env, "argument desiredState should be typeof number!").ThrowAsJavaScriptException();
-            return env.Null();
+    // This code will be executed on the worker thread
+    void Execute() {
+        SCManager manager;
+        BOOL success;
+
+        // Retrieve processes name and id!
+        processesMap = new PROCESSESMAP;
+        success = getProcessNameAndId(processesMap);
+        if (!success) {
+            return SetError("Failed to get process names and ids");
         }
 
-        // Retrieve service Name
-        int32_t desiredState = info[0].As<Number>().Int32Value();
-        serviceState = getServiceState(desiredState);
+        // Open SC-Manager
+        success = manager.Open(SC_MANAGER_ENUMERATE_SERVICE);
+        if (!success) {
+            return SetError("Open SCManager failed");
+        }
+
+        // Enumerate services
+        EnumServicesResponse enumRet = manager.EnumServicesStatus(serviceState, &servicesNum);
+        if (!enumRet.status) {
+            return SetError("Failed to Enumerate Services");
+        }
+
+        lpServiceStatus = enumRet.lpBytes;
+        manager.Close();
     }
 
-    // Open SC-Manager
-    success = manager.Open(SC_MANAGER_ENUMERATE_SERVICE);
-    if (!success) {
-        Error::New(env, "Open SCManager failed").ThrowAsJavaScriptException();
-        // printf("OpenSCManager failed (%d)\n", GetLastError());
+    void OnError(const Error& e) {
+        stringstream error;
+        error << e.what() << getLastErrorMessage();
+        Error::New(Env(), error.str()).ThrowAsJavaScriptException();
+    }
+
+    void OnOK() {
+        HandleScope scope(Env());
+        Array ret = Array::New(Env());
+        unsigned arrIndex = 0;
+
+        ENUM_SERVICE_STATUS_PROCESS service;
+        DWORD processId;
+        for (DWORD i = 0; i<servicesNum; ++i) {
+            SecureZeroMemory(&service, sizeof(service));
+            SecureZeroMemory(&processId, sizeof(processId));
+            service = *lpServiceStatus;
+            processId = service.ServiceStatusProcess.dwProcessId;
+        
+            // Create and push JavaScript Object
+            Object JSObject = Object::New(Env());
+
+            Object statusProcess = Object::New(Env());
+            statusProcess.Set("id", processId);
+            statusProcess.Set("name", processesMap->find(processId)->second.c_str());
+            statusProcess.Set("currentState", service.ServiceStatusProcess.dwCurrentState);
+            statusProcess.Set("serviceType", service.ServiceStatusProcess.dwServiceType);
+            statusProcess.Set("checkPoint", service.ServiceStatusProcess.dwCheckPoint);
+            statusProcess.Set("controlsAccepted", service.ServiceStatusProcess.dwControlsAccepted);
+            statusProcess.Set("serviceFlags", service.ServiceStatusProcess.dwServiceFlags);
+            statusProcess.Set("serviceSpecificExitCode", service.ServiceStatusProcess.dwServiceSpecificExitCode);
+            statusProcess.Set("waitHint", service.ServiceStatusProcess.dwWaitHint);
+            statusProcess.Set("win32ExitCode", service.ServiceStatusProcess.dwWin32ExitCode);
+
+            JSObject.Set("name", service.lpServiceName);
+            JSObject.Set("displayName", service.lpDisplayName);
+            JSObject.Set("process", statusProcess);
+            ret[arrIndex] = JSObject;
+
+            lpServiceStatus++;
+            arrIndex++;
+        }
+
+        Callback().Call({Env().Null(), ret});
+    }
+
+};
+ 
+/*
+ * Enumerate Windows Services (binding interface).
+ */
+Value enumServicesStatus(const CallbackInfo& info) {
+    Env env = info.Env();
+    int32_t desiredState;
+    DWORD serviceState = SERVICE_STATE_ALL;
+
+    // Check argument length!
+    if (info.Length() < 2) {
+        Error::New(env, "Wrong number of argument provided!").ThrowAsJavaScriptException();
         return env.Null();
     }
 
-    // Enumerate services
-    EnumServicesResponse enumRet = manager.EnumServicesStatus(serviceState, &servicesNum);
-    if (!enumRet.status) {
-        Error::New(env, "Execution of EnumServicesStatusEx failed").ThrowAsJavaScriptException();
+    if (!info[0].IsNumber()) {
+        Error::New(env, "Argument desiredState should be typeof number!").ThrowAsJavaScriptException();
         return env.Null();
     }
 
-    // Retrieve processes name and id!
-    PROCESSESMAP* processesMap = new PROCESSESMAP;
-    success = getProcessNameAndId(processesMap);
-
-    ENUM_SERVICE_STATUS_PROCESS* lpServiceStatus = (ENUM_SERVICE_STATUS_PROCESS*) enumRet.lpBytes;
-    Array ret = Array::New(env); 
-    for (DWORD i = 0; i < servicesNum; i++) {
-        HandleScope scope(info.Env());
-        ENUM_SERVICE_STATUS_PROCESS service = lpServiceStatus[i];
-        DWORD processId = service.ServiceStatusProcess.dwProcessId;
-
-        // Create and push JavaScript Object
-        Object JSObject = Object::New(info.Env());
-        ret[i] = JSObject;
-
-        Object statusProcess = Object::New(info.Env());
-        statusProcess.Set("id", processId);
-        statusProcess.Set("name", success ? processesMap->find(processId)->second.c_str() : "");
-        statusProcess.Set("currentState", service.ServiceStatusProcess.dwCurrentState);
-        statusProcess.Set("serviceType", service.ServiceStatusProcess.dwServiceType);
-        statusProcess.Set("checkPoint", service.ServiceStatusProcess.dwCheckPoint);
-        statusProcess.Set("controlsAccepted", service.ServiceStatusProcess.dwControlsAccepted);
-        statusProcess.Set("serviceFlags", service.ServiceStatusProcess.dwServiceFlags);
-        statusProcess.Set("serviceSpecificExitCode", service.ServiceStatusProcess.dwServiceSpecificExitCode);
-        statusProcess.Set("waitHint", service.ServiceStatusProcess.dwWaitHint);
-        statusProcess.Set("win32ExitCode", service.ServiceStatusProcess.dwWin32ExitCode);
-
-        JSObject.Set("name", service.lpServiceName);
-        JSObject.Set("displayName", service.lpDisplayName);
-        JSObject.Set("process", statusProcess);
+    // callback should be a Napi::Function
+    if (!info[1].IsFunction()) {
+        Error::New(env, "Argument callback should be a Function!").ThrowAsJavaScriptException();
+        return env.Null();
     }
-    
-    // Close manager
-    manager.Close();
-    free(enumRet.lpBytes);
 
-    return ret;
+    // Execute worker
+    desiredState = info[0].As<Number>().Int32Value();
+    serviceState = getServiceState(desiredState);
+    Function cb = info[1].As<Function>();
+    (new EnumServicesWorker(cb, serviceState))->Queue();
+
+    return env.Undefined();
 }
 
 /*
@@ -212,9 +270,6 @@ Value getServiceConfiguration(const CallbackInfo& info) {
         return env.Null();
     }
 
-    // Service description
-    LPSERVICE_DESCRIPTIONA lpsd = manager.ServiceConfig2<LPSERVICE_DESCRIPTIONA>(SERVICE_CONFIG_DESCRIPTION, true);
-
     // Setup properties
     ret.Set("type", serviceConfig.lpsc->dwServiceType);
     ret.Set("startType", serviceConfig.lpsc->dwStartType);
@@ -222,9 +277,6 @@ Value getServiceConfiguration(const CallbackInfo& info) {
     ret.Set("binaryPath", serviceConfig.lpsc->lpBinaryPathName);
     ret.Set("account", serviceConfig.lpsc->lpServiceStartName);
 
-    if (lpsd != NULL && lpsd->lpDescription != NULL) {
-        ret.Set("description", lpsd->lpDescription);
-    }
     if (serviceConfig.lpsc->lpLoadOrderGroup != NULL && lstrcmp(serviceConfig.lpsc->lpLoadOrderGroup, TEXT("")) != 0) {
         ret.Set("loadOrderGroup", serviceConfig.lpsc->lpLoadOrderGroup);
     }
@@ -236,13 +288,24 @@ Value getServiceConfiguration(const CallbackInfo& info) {
     }
     
     // Free handle/memory
-    LocalFree(serviceConfig.lpsc); 
-    if (lpsd != NULL) {
-        LocalFree(lpsd);
-    }
+    LocalFree(serviceConfig.lpsc);
     manager.Close();
 
     return ret;
+}
+
+/*
+ * Byte sequence to std::string
+ */
+string byteSeqToString(const unsigned char bytes[], size_t n) {
+    ostringstream stm;
+    stm << hex << uppercase;
+
+    for(size_t i = 0; i < n; ++i) {
+        stm << setw(2) << setfill('0') << unsigned(bytes[i]);
+    }
+
+    return stm.str();
 }
 
 /*
@@ -254,9 +317,10 @@ Value getServiceTriggers(const CallbackInfo& info) {
     Env env = info.Env();
 
     // Instanciate Variables
+    void* buf = NULL;
     SCManager manager;
     BOOL success;
-    SERVICE_TRIGGER_INFO triggers;
+    SERVICE_TRIGGER_INFO *triggers = {0};
     DWORD dwBytesNeeded, cbBufSize;
 
     // Check if there is less than one argument, if then throw a JavaScript exception
@@ -298,48 +362,53 @@ Value getServiceTriggers(const CallbackInfo& info) {
             return env.Null();
         }
         cbBufSize = dwBytesNeeded;
+        free(buf);
+        buf = malloc(cbBufSize);
     }
 
-    if (!QueryServiceConfig2(manager.service, SERVICE_CONFIG_TRIGGER_INFO, (LPBYTE) &triggers, cbBufSize, &dwBytesNeeded)) {
+    if (!QueryServiceConfig2(manager.service, SERVICE_CONFIG_TRIGGER_INFO, (LPBYTE) buf, cbBufSize, &dwBytesNeeded)) {
         Error::New(env, "QueryServiceConfig2 (2) failed").ThrowAsJavaScriptException();
         manager.Close();
 
         return env.Null();
     }
-    
-    Array ret = Array::New(env, triggers.cTriggers);
-    cout << "triggers len: " << triggers.cTriggers << endl;
 
-    PSERVICE_TRIGGER currTrigger = triggers.pTriggers;
-    for (unsigned i = 0; i < triggers.cTriggers; ++i, currTrigger++) {
+    triggers = (SERVICE_TRIGGER_INFO*) buf;
+    DWORD triggersLen = triggers->cTriggers;
+    Array ret = Array::New(env, triggersLen);
+
+    PSERVICE_TRIGGER currTrigger = triggers->pTriggers;
+    for (unsigned i = 0; i < triggersLen; ++i, currTrigger++) {
         Object trigger = Object::New(info.Env());
-        // Array dataItems = Array::New(info.Env());
-
-        cout << "dwTriggerType: " << currTrigger->dwTriggerType << endl;
-        cout << "dwAction: " << currTrigger->dwAction << endl;
+        Array dataItems = Array::New(info.Env());
 
         trigger.Set("type", currTrigger->dwTriggerType);
         trigger.Set("action", currTrigger->dwAction);
-        // trigger.Set("dataItems", dataItems);
+        trigger.Set("dataItems", dataItems);
 
         string guid = guidToString(*currTrigger->pTriggerSubtype);
-        cout << "guid: " << guid << endl;
         trigger.Set("guid", guid.c_str());
 
         ret[i] = trigger;
-        // for (DWORD j = 0; j < serviceTrigger.cDataItems; j++) {
-        //     SERVICE_TRIGGER_SPECIFIC_DATA_ITEM pServiceTrigger = serviceTrigger.pDataItems[j];
-        //     Object specificDataItems = Object::New(env);
-        //     dataItems[j] = specificDataItems;
+        for (DWORD j = 0; j < currTrigger->cDataItems; j++) {
+            SERVICE_TRIGGER_SPECIFIC_DATA_ITEM pServiceTrigger = currTrigger->pDataItems[j];
+            Object specificDataItems = Object::New(env);
+            dataItems[j] = specificDataItems;
 
-        //     specificDataItems.Set("dataType", pServiceTrigger.dwDataType);
-        // }
+            specificDataItems.Set("dataType", pServiceTrigger.dwDataType);
+            if (pServiceTrigger.dwDataType == SERVICE_TRIGGER_DATA_TYPE_BINARY) {
+                specificDataItems.Set("data", byteSeqToString(pServiceTrigger.pData, pServiceTrigger.cbData));
+            }
+            // else if(pServiceTrigger.dwDataType == SERVICE_TRIGGER_DATA_TYPE_STRING) {
+            //     specificDataItems.Set("data", byteSeqToString(pServiceTrigger.pData, pServiceTrigger.cbData));
+            // }
+        }
     }
 
     // Cleanup ressources!
     manager.Close();
 
-    cout << "byebye!" << endl;
+    free(buf);
 
     return ret;
 }
@@ -353,9 +422,10 @@ Value enumDependentServices(const CallbackInfo& info) {
     Env env = info.Env();
 
     // Instanciate Variables
+    void* buf = NULL;
     SCManager manager;
     BOOL success;
-    LPENUM_SERVICE_STATUSA lpServices;
+    LPENUM_SERVICE_STATUSA *lpServices = {0};
     DWORD dwBytesNeeded, cbBufSize, nbReturned;
 
     // Check if there is less than one argument, if then throw a JavaScript exception
@@ -396,24 +466,32 @@ Value enumDependentServices(const CallbackInfo& info) {
             return env.Null();
         }
         cbBufSize = dwBytesNeeded;
+        free(buf);
+        buf = malloc(cbBufSize);
     }
 
-    if (!EnumDependentServicesA(manager.service, SERVICE_STATE_ALL, lpServices, cbBufSize, &dwBytesNeeded, &nbReturned)) {
+    if (!EnumDependentServicesA(manager.service, SERVICE_STATE_ALL, (LPENUM_SERVICE_STATUSA) buf, cbBufSize, &dwBytesNeeded, &nbReturned)) {
         Error::New(env, "EnumDependentServicesA (2) failed").ThrowAsJavaScriptException();
         manager.Close();
 
         return env.Null();
     }
 
+    lpServices = (LPENUM_SERVICE_STATUSA*) buf;
+
     Array ret = Array::New(env);
+    ENUM_SERVICE_STATUSA *service;
     for (DWORD i = 0; i < nbReturned; ++i) {
-        HandleScope scope(info.Env());
-        ENUM_SERVICE_STATUSA service = lpServices[i];
-        Object JSObject = Object::New(info.Env());
+        SecureZeroMemory(&service, sizeof(service));
+        service = *lpServices;
+        Object JSObject = Object::New(env);
         ret[i] = JSObject;
 
-        JSObject.Set("name", service.lpServiceName);
-        JSObject.Set("displayName", service.lpDisplayName);
+        cout << "name: " << service->lpServiceName << endl;
+        cout << "displayName: " << service->lpDisplayName << endl;
+
+        JSObject.Set("name", service->lpServiceName);
+        JSObject.Set("displayName", service->lpDisplayName);
         // Object statusProcess = Object::New(env);
         // statusProcess.Set("currentState", service.ServiceStatus.dwCurrentState);
         // statusProcess.Set("checkpoint", service.ServiceStatus.dwCheckPoint);
@@ -424,6 +502,7 @@ Value enumDependentServices(const CallbackInfo& info) {
         // statusProcess.Set("win32ExitCode", service.ServiceStatus.dwWin32ExitCode);
         
         // JSObject.Set("process", statusProcess);
+        lpServices++;
     }
 
     return ret;

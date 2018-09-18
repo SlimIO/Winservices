@@ -7,10 +7,8 @@ winservices.enumServicesStatus(0, function(err, data) {
     }
     console.log(data.length);
     for (const service of data) {
-        const triggers = winservices.getServiceTriggers(service.name);
-        if (triggers.length > 0) {
-            console.log(JSON.stringify(triggers, null, 2));
-        }
+        const dep = winservices.enumDependentServices(service.name);
+        console.log(dep);
     }
     console.log("done!!!");
 });
