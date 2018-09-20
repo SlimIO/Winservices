@@ -43,7 +43,7 @@ declare namespace Winservices {
 
     export interface ServiceTriggerSpecificDataItem {
         dataType: number;
-        data: any;
+        data?: string;
     }
 
     export function enumServicesStatus(desiredState?: ServiceState): Service[];

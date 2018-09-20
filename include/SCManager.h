@@ -3,7 +3,6 @@
 
 #include <windows.h>
 #include <string>
-#include <iostream>
 
 using namespace std;
 
@@ -49,8 +48,6 @@ bool SCManager::Open(DWORD dwDesiredAccess) {
     }
     manager = OpenSCManager(NULL, NULL, dwDesiredAccess);
     if (NULL == manager) {
-        // printf("OpenSCManager failed (%d)\n", GetLastError());
-
         return false;
     }
 
@@ -80,10 +77,9 @@ bool SCManager::Close() {
  * Open a new Service handle
  * 
  * @doc: https://docs.microsoft.com/en-us/windows/desktop/api/winsvc/nf-winsvc-openservicea
- * @note: OpenService "A" is used to support char*
+ * @note: OpenService "A" is used to support const char*
  */
 bool SCManager::DeclareService(string serviceName, DWORD dwAccessRight) {
-    // SERVICE_QUERY_CONFIG
     service = OpenServiceA(manager, serviceName.c_str(), dwAccessRight); 
     if (service == NULL) { 
         Close();
@@ -99,35 +95,41 @@ bool SCManager::DeclareService(string serviceName, DWORD dwAccessRight) {
  * @doc: https://docs.microsoft.com/en-us/windows/desktop/api/winsvc/nf-winsvc-enumservicesstatusexa
  */
 EnumServicesResponse SCManager::EnumServicesStatus(DWORD serviceState, DWORD* servicesNum) {
-    // Instanciate Variables
     void* buf = NULL;
     DWORD bufSize = 0;
     DWORD bytesNeeded = 0;
     EnumServicesResponse ret;
 
     for(;;) {
-        // Made a first call to get bytesNeeded & servicesNum
         ret.status = EnumServicesStatusExA(
             manager, SC_ENUM_PROCESS_INFO, SERVICE_WIN32, serviceState, (LPBYTE) buf, bufSize, &bytesNeeded, servicesNum, NULL, NULL
         );
 
+        // If status is true, then return the response
         if (ret.status) {
             ret.lpBytes = (ENUM_SERVICE_STATUS_PROCESS*) buf;
             return ret;
         }
+
+        // If last error is different of ERROR_MORE_DATA (insufficient buffer size), then return false & close.
         if (ERROR_MORE_DATA != GetLastError()) {
             free(buf);
             Close();
             return ret;
         }
 
+        // Re-allocate buffer as much is needed!
         bufSize += bytesNeeded;
         free(buf);
         buf = malloc(bufSize);
     }
 }
 
-// Query Service Config
+/**
+ * Retrieve Service Configuration
+ * 
+ * @doc: https://docs.microsoft.com/en-us/windows/desktop/api/winsvc/nf-winsvc-queryserviceconfiga
+ */
 ServiceConfigResponse SCManager::ServiceConfig() {
     DWORD dwBytesNeeded, cbBufSize;
     ServiceConfigResponse ret;
@@ -138,6 +140,8 @@ ServiceConfigResponse SCManager::ServiceConfig() {
             Close();
             return ret;
         }
+
+        // Re-allocation buffer size
         cbBufSize = dwBytesNeeded;
         ret.lpsc = (LPQUERY_SERVICE_CONFIG) LocalAlloc(LMEM_FIXED, cbBufSize);
     }
@@ -150,28 +154,5 @@ ServiceConfigResponse SCManager::ServiceConfig() {
     ret.status = true;
     return ret;
 }
-
-template<typename T>
-T SCManager::ServiceConfig2(DWORD dwInfoLevel, bool allocate) {
-    T lpsd;
-    DWORD dwBytesNeeded, cbBufSize;
-
-    if(!QueryServiceConfig2(service, dwInfoLevel, NULL, 0, &dwBytesNeeded)) {
-        if(ERROR_INSUFFICIENT_BUFFER != GetLastError()) {
-            return NULL;
-        }
-        cbBufSize = dwBytesNeeded;
-        if (allocate) {
-            lpsd = (T) LocalAlloc(LMEM_FIXED, cbBufSize);
-        }
-    }
- 
-    if (!QueryServiceConfig2(service, dwInfoLevel, (LPBYTE) &lpsd, cbBufSize, &dwBytesNeeded)) {
-        return NULL;
-    }
-
-    return lpsd;
-}
-
 
 #endif // SCMANAGER_H
