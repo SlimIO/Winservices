@@ -156,8 +156,9 @@ class EnumServicesWorker : public AsyncWorker {
     }
 
     void OnError(const Error& e) {
+        DWORD errorCode = GetLastError();
         stringstream error;
-        error << e.what() << getLastErrorMessage();
+        error << e.what() << " - code (" << errorCode << ") - " << getLastErrorMessage();
         Error::New(Env(), error.str()).ThrowAsJavaScriptException();
     }
 
@@ -281,8 +282,9 @@ class ConfigServiceWorker : public AsyncWorker {
     }
 
     void OnError(const Error& e) {
+        DWORD errorCode = GetLastError();
         stringstream error;
-        error << e.what() << getLastErrorMessage();
+        error << e.what() << " - code (" << errorCode << ") - " << getLastErrorMessage();
         Error::New(Env(), error.str()).ThrowAsJavaScriptException();
     }
 
@@ -404,8 +406,9 @@ class ServiceTriggersWorker : public AsyncWorker {
     }
 
     void OnError(const Error& e) {
+        DWORD errorCode = GetLastError();
         stringstream error;
-        error << e.what() << getLastErrorMessage();
+        error << e.what() << " - code (" << errorCode << ") - " << getLastErrorMessage();
         Error::New(Env(), error.str()).ThrowAsJavaScriptException();
     }
 
@@ -511,16 +514,17 @@ class DependentServiceWorker : public AsyncWorker {
         }
 
         // Open Service!
-        success = manager.DeclareService(serviceName, SERVICE_QUERY_CONFIG);
+        success = manager.DeclareService(serviceName, SERVICE_ENUMERATE_DEPENDENTS);
         if (!success) {
             return SetError("Failed to Open service!");
         }
 
         success = EnumDependentServicesA(manager.service, SERVICE_STATE_ALL, lpDependencies, 0, &dwBytesNeeded, &nbReturned);
         if (!success) {
-            if(ERROR_MORE_DATA != GetLastError()) {
+            DWORD errorCode = GetLastError();
+            if(ERROR_MORE_DATA != errorCode) {
                 manager.Close();
-                return SetError("EnumDependentServicesA (1) failed");
+                return SetError("EnumDependentServicesA (1) failed!");
             }
 
             lpDependencies = (LPENUM_SERVICE_STATUSA) HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, dwBytesNeeded);
@@ -539,25 +543,22 @@ class DependentServiceWorker : public AsyncWorker {
     }
 
     void OnError(const Error& e) {
+        DWORD errorCode = GetLastError();
         stringstream error;
-        error << e.what() << " - " << getLastErrorMessage();
-        Error::New(Env(), error.str()).ThrowAsJavaScriptException();
+        error << e.what() << " - code (" << errorCode << ") - " << getLastErrorMessage();
+
+        Callback().Call({String::New(Env(), error.str()), Env().Null()});
     }
 
     void OnOK() {
         HandleScope scope(Env());
-        Array ret = Array::New(Env());
-
-        cout << "done !" << endl;
+        Object ret = Object::New(Env());
 
         ENUM_SERVICE_STATUSA service;
         for (DWORD i = 0; i < nbReturned; ++i) {
             SecureZeroMemory(&service, sizeof(service));
             service = *(lpDependencies + i);
             Object JSObject = Object::New(Env());
-            ret[i] = JSObject;
-
-            cout << "name: " << service.lpServiceName << endl;
 
             JSObject.Set("name", service.lpServiceName);
             JSObject.Set("displayName", service.lpDisplayName);
@@ -571,9 +572,8 @@ class DependentServiceWorker : public AsyncWorker {
             statusProcess.Set("win32ExitCode", service.ServiceStatus.dwWin32ExitCode);
             
             JSObject.Set("process", statusProcess);
+            ret.Set(service.lpServiceName, JSObject);
         }
-
-        cout << "bye bye" << endl;
 
         Callback().Call({Env().Null(), ret});
     }
