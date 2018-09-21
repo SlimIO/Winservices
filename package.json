@@ -1,7 +1,7 @@
 {
   "name": "@slimio/winservices",
   "version": "1.0.0",
-  "description": "Windows Disk low level binding",
+  "description": "Windows Services - Node.JS low level binding",
   "main": "index.js",
   "engines": {
     "node": ">=10"
@@ -19,7 +19,7 @@
     "url": "git+https://github.com/SlimIO/Winservices.git"
   },
   "keywords": [],
-  "author": "",
+  "author": "SlimIO",
   "license": "MIT",
   "gypfile": true,
   "bugs": {
