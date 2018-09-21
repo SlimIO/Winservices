@@ -1,9 +1,13 @@
 declare namespace Winservices {
 
-    export enum ServiceState {
-        ACTIVE = 0,
-        INACTIVE = 1,
-        ALL = 2
+    export interface ServiceStates {
+        Active: 0,
+        Inactive: 1,
+        All: 2
+    }
+
+    export interface DependentServices {
+        [serviceName: string]: Service;
     }
 
     export interface Service {
@@ -46,10 +50,13 @@ declare namespace Winservices {
         data?: string;
     }
 
-    export function enumServicesStatus(desiredState?: ServiceState): Service[];
+    export function enumServicesStatus(desiredState?: keyof ServiceStates): Service[];
     export function getServiceConfiguration(serviceName: string): ServiceInformation;
     export function getServiceTriggers(serviceName: string): ServiceTrigger[];
-    export function enumDependentServices(serviceName: string): Service[];
+    export function enumDependentServices(serviceName: string): DependentServices;
+    export const constants: {
+        States: ServiceStates
+    };
 }
 
 export as namespace Winservices;
