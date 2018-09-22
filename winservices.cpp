@@ -11,6 +11,9 @@
 using namespace std;
 using namespace Napi;
 
+const char FAILED_MANAGER[] = "Failed to open SCManager handle";
+const char FAILED_SERVICE[] = "Failed to open Service handle";
+
 typedef unordered_map<DWORD, string> PROCESSESMAP;
 
 /*
@@ -136,19 +139,21 @@ class EnumServicesWorker : public AsyncWorker {
         processesMap = new PROCESSESMAP;
         success = getProcessNameAndId(processesMap);
         if (!success) {
-            return SetError("Failed to get process names and ids");
+            return SetError("Failed to retrieve process names and ids");
         }
 
         // Open SC-Manager
         success = manager.Open(SC_MANAGER_ENUMERATE_SERVICE);
         if (!success) {
-            return SetError("Open SCManager failed");
+            return SetError(FAILED_MANAGER);
         }
 
         // Enumerate services
         EnumServicesResponse enumRet = manager.EnumServicesStatus(serviceState, &servicesNum);
         if (!enumRet.status) {
-            return SetError("Failed to Enumerate Services");
+            stringstream error;
+            error << "Failed to enumerate Windows Services by state (" << serviceState << ")";
+            return SetError(error.str());
         }
 
         lpServiceStatus = enumRet.lpBytes;
@@ -158,8 +163,12 @@ class EnumServicesWorker : public AsyncWorker {
     void OnError(const Error& e) {
         DWORD errorCode = GetLastError();
         stringstream error;
-        error << e.what() << " - code (" << errorCode << ") - " << getLastErrorMessage();
-        Error::New(Env(), error.str()).ThrowAsJavaScriptException();
+        error << e.what();
+        if (errorCode != 0) {
+            error << " - code (" << errorCode << ") - " << getLastErrorMessage();
+        }
+
+        Callback().Call({String::New(Env(), error.str()), Env().Null()});
     }
 
     void OnOK() {
@@ -262,13 +271,13 @@ class ConfigServiceWorker : public AsyncWorker {
         // Open Manager!
         success = manager.Open(SC_MANAGER_ENUMERATE_SERVICE);
         if (!success) {
-            return SetError("Open SCManager failed");
+            return SetError(FAILED_MANAGER);
         }
 
         // Open Service!
         success = manager.DeclareService(serviceName, SERVICE_QUERY_CONFIG);
         if (!success) {
-            return SetError("Failed to Open service!");
+            return SetError(FAILED_SERVICE);
         }
 
         // Retrieve Service Config!
@@ -284,8 +293,12 @@ class ConfigServiceWorker : public AsyncWorker {
     void OnError(const Error& e) {
         DWORD errorCode = GetLastError();
         stringstream error;
-        error << e.what() << " - code (" << errorCode << ") - " << getLastErrorMessage();
-        Error::New(Env(), error.str()).ThrowAsJavaScriptException();
+        error << e.what() << " for " << serviceName;
+        if (errorCode != 0) {
+            error << " - code (" << errorCode << ") - " << getLastErrorMessage();
+        }
+
+        Callback().Call({String::New(Env(), error.str()), Env().Null()});
     }
 
     void OnOK() {
@@ -375,13 +388,13 @@ class ServiceTriggersWorker : public AsyncWorker {
         // Open Manager!
         success = manager.Open(SC_MANAGER_ENUMERATE_SERVICE);
         if (!success) {
-            return SetError("Open SCManager failed");
+            return SetError(FAILED_MANAGER);
         }
 
         // Open Service!
         success = manager.DeclareService(serviceName, SERVICE_QUERY_CONFIG);
         if (!success) {
-            return SetError("Failed to Open service!");
+            return SetError(FAILED_SERVICE);
         }
 
         // Query for TRIGGER INFO
@@ -408,8 +421,12 @@ class ServiceTriggersWorker : public AsyncWorker {
     void OnError(const Error& e) {
         DWORD errorCode = GetLastError();
         stringstream error;
-        error << e.what() << " - code (" << errorCode << ") - " << getLastErrorMessage();
-        Error::New(Env(), error.str()).ThrowAsJavaScriptException();
+        error << e.what() << " for " << serviceName;
+        if (errorCode != 0) {
+            error << " - code (" << errorCode << ") - " << getLastErrorMessage();
+        }
+
+        Callback().Call({String::New(Env(), error.str()), Env().Null()});
     }
 
     void OnOK() {
@@ -512,13 +529,13 @@ class DependentServiceWorker : public AsyncWorker {
         // Open Manager!
         success = manager.Open(SC_MANAGER_ENUMERATE_SERVICE);
         if (!success) {
-            return SetError("Failed to Open SCManager");
+            return SetError(FAILED_MANAGER);
         }
 
         // Open Service!
         success = manager.DeclareService(serviceName, SERVICE_ENUMERATE_DEPENDENTS);
         if (!success) {
-            return SetError("Failed to Open service");
+            return SetError(FAILED_SERVICE);
         }
 
         success = EnumDependentServicesA(manager.service, serviceState, lpDependencies, 0, &dwBytesNeeded, &nbReturned);
@@ -547,7 +564,10 @@ class DependentServiceWorker : public AsyncWorker {
     void OnError(const Error& e) {
         DWORD errorCode = GetLastError();
         stringstream error;
-        error << e.what() << " for service " << serviceName << " - code (" << errorCode << ") - " << getLastErrorMessage();
+        error << e.what() << " for " << serviceName;
+        if (errorCode != 0) {
+            error << " - code (" << errorCode << ") - " << getLastErrorMessage();
+        }
 
         Callback().Call({String::New(Env(), error.str()), Env().Null()});
     }
