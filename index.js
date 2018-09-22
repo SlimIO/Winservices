@@ -175,7 +175,5 @@ module.exports = {
     enumDependentServices,
     getServiceConfiguration,
     getServiceTriggers,
-    constants: {
-        States
-    }
+    constants: Object.freeze({ States })
 }
