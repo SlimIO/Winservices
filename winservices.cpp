@@ -437,12 +437,12 @@ class ServiceTriggersWorker : public AsyncWorker {
                 dataItems[j] = specificDataItems;
 
                 specificDataItems.Set("dataType", pServiceTrigger.dwDataType);
-                // if (pServiceTrigger.dwDataType == SERVICE_TRIGGER_DATA_TYPE_BINARY) {
-                //     specificDataItems.Set("data", byteSeqToString(pServiceTrigger.pData, pServiceTrigger.cbData));
-                // }
-                // else if(pServiceTrigger.dwDataType == SERVICE_TRIGGER_DATA_TYPE_STRING) {
-                //     specificDataItems.Set("data", byteSeqToString(pServiceTrigger.pData, pServiceTrigger.cbData));
-                // }
+                if (pServiceTrigger.dwDataType == SERVICE_TRIGGER_DATA_TYPE_BINARY) {
+                    specificDataItems.Set("data", byteSeqToString(pServiceTrigger.pData, pServiceTrigger.cbData));
+                }
+                else if(pServiceTrigger.dwDataType == SERVICE_TRIGGER_DATA_TYPE_STRING) {
+                    specificDataItems.Set("data", byteSeqToString(pServiceTrigger.pData, pServiceTrigger.cbData));
+                }
             }
         }
 
@@ -493,12 +493,14 @@ Value getServiceTriggers(const CallbackInfo& info) {
  */
 class DependentServiceWorker : public AsyncWorker {
     public:
-        DependentServiceWorker(Function& callback, string serviceName) : AsyncWorker(callback), serviceName(serviceName) {}
+        DependentServiceWorker(Function& callback, string serviceName, DWORD serviceState) :
+        AsyncWorker(callback), serviceName(serviceName), serviceState(serviceState) {}
         ~DependentServiceWorker() {}
 
     private:
         string serviceName;
         LPENUM_SERVICE_STATUSA lpDependencies = NULL;
+        DWORD serviceState;
         DWORD nbReturned;
 
     // This code will be executed on the worker thread
@@ -519,7 +521,7 @@ class DependentServiceWorker : public AsyncWorker {
             return SetError("Failed to Open service!");
         }
 
-        success = EnumDependentServicesA(manager.service, SERVICE_STATE_ALL, lpDependencies, 0, &dwBytesNeeded, &nbReturned);
+        success = EnumDependentServicesA(manager.service, serviceState, lpDependencies, 0, &dwBytesNeeded, &nbReturned);
         if (!success) {
             DWORD errorCode = GetLastError();
             if(ERROR_MORE_DATA != errorCode) {
@@ -534,7 +536,7 @@ class DependentServiceWorker : public AsyncWorker {
             }
         }
 
-        if (!EnumDependentServicesA(manager.service, SERVICE_STATE_ALL, lpDependencies, dwBytesNeeded, &dwBytesNeeded, &nbReturned)) {
+        if (!EnumDependentServicesA(manager.service, serviceState, lpDependencies, dwBytesNeeded, &dwBytesNeeded, &nbReturned)) {
             manager.Close();
             return SetError("EnumDependentServicesA (2) failed");
         }
@@ -587,9 +589,10 @@ class DependentServiceWorker : public AsyncWorker {
  */
 Value enumDependentServices(const CallbackInfo& info) {
     Env env = info.Env();
+    DWORD serviceState = SERVICE_STATE_ALL;
 
     // Check if there is less than two argument, if then throw a JavaScript exception
-    if (info.Length() < 2) {
+    if (info.Length() < 3) {
         Error::New(env, "Wrong number of argument provided!").ThrowAsJavaScriptException();
         return env.Null();
     }
@@ -600,16 +603,24 @@ Value enumDependentServices(const CallbackInfo& info) {
         return env.Null();
     }
 
+        // The first argument (desiredState) should be typeof Napi::Number
+    if (!info[1].IsNumber()) {
+        Error::New(env, "Argument desiredState should be typeof number!").ThrowAsJavaScriptException();
+        return env.Null();
+    }
+
     // callback should be a Napi::Function
-    if (!info[1].IsFunction()) {
+    if (!info[2].IsFunction()) {
         Error::New(env, "Argument callback should be a Function!").ThrowAsJavaScriptException();
         return env.Null();
     }
 
     // Retrieve service Name
     string serviceName = info[0].As<String>().Utf8Value();
-    Function cb = info[1].As<Function>();
-    (new DependentServiceWorker(cb, serviceName))->Queue();
+    int32_t desiredState = info[1].As<Number>().Int32Value();
+    serviceState = getServiceState(desiredState);
+    Function cb = info[2].As<Function>();
+    (new DependentServiceWorker(cb, serviceName, serviceState))->Queue();
 
     return env.Undefined();
 }

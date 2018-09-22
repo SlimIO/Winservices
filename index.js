@@ -52,6 +52,7 @@ function enumServicesStatus(desiredState = States.All) {
  * @memberof winservices#
  * @desc Enumerate Dependent Service of a given Service
  * @param {!String} serviceName service name on which we have to seek for dependent services!
+ * @param {!Number} desiredState desired state of dependent services.
  * @return {Promise<Winservices.DependentServices>}
  *
  * @version 1.0.0
@@ -73,9 +74,9 @@ function enumServicesStatus(desiredState = States.All) {
  * }
  * main().catch(console.error)
  */
-function enumDependentServices(serviceName) {
+function enumDependentServices(serviceName, desiredState = States.All) {
     return new Promise((resolve, reject) => {
-        winservices.enumDependentServices(serviceName, (error, dependentServices) => {
+        winservices.enumDependentServices(serviceName, desiredState, (error, dependentServices) => {
             if (error) {
                 return reject(error);
             }
