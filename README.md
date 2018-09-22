@@ -78,8 +78,10 @@ export interface Service {
 }
 ```
 
-### enumDependentServices(serviceName: string): Promise< DependentServices >
+### enumDependentServices(serviceName: string, desiredState?: number): Promise< DependentServices >
 Enumerate dependent Windows Services of a given Service name. The returned value is a Promise of Object DependentServices.
+
+Default value for desiredState is `State.All`.
 
 ```ts
 export interface DependentServices {
