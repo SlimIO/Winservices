@@ -512,13 +512,13 @@ class DependentServiceWorker : public AsyncWorker {
         // Open Manager!
         success = manager.Open(SC_MANAGER_ENUMERATE_SERVICE);
         if (!success) {
-            return SetError("Open SCManager failed");
+            return SetError("Failed to Open SCManager");
         }
 
         // Open Service!
         success = manager.DeclareService(serviceName, SERVICE_ENUMERATE_DEPENDENTS);
         if (!success) {
-            return SetError("Failed to Open service!");
+            return SetError("Failed to Open service");
         }
 
         success = EnumDependentServicesA(manager.service, serviceState, lpDependencies, 0, &dwBytesNeeded, &nbReturned);
@@ -526,13 +526,13 @@ class DependentServiceWorker : public AsyncWorker {
             DWORD errorCode = GetLastError();
             if(ERROR_MORE_DATA != errorCode) {
                 manager.Close();
-                return SetError("EnumDependentServicesA (1) failed!");
+                return SetError("EnumDependentServicesA (1) failed");
             }
 
             lpDependencies = (LPENUM_SERVICE_STATUSA) HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, dwBytesNeeded);
             if (!lpDependencies) {
                 manager.Close();
-                return SetError("ERROR while re-allocating memory!");
+                return SetError("ERROR while re-allocating memory");
             }
         }
 
@@ -547,7 +547,7 @@ class DependentServiceWorker : public AsyncWorker {
     void OnError(const Error& e) {
         DWORD errorCode = GetLastError();
         stringstream error;
-        error << e.what() << " - code (" << errorCode << ") - " << getLastErrorMessage();
+        error << e.what() << " for service " << serviceName << " - code (" << errorCode << ") - " << getLastErrorMessage();
 
         Callback().Call({String::New(Env(), error.str()), Env().Null()});
     }
