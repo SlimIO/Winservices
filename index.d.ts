@@ -55,7 +55,7 @@ declare namespace Winservices {
     export function getServiceTriggers(serviceName: string): Promise<ServiceTrigger[]>;
     export function enumDependentServices(serviceName: string, desiredState?: keyof ServiceStates): Promise<DependentServices>;
     export const constants: {
-        States: ServiceStates
+        readonly States: ServiceStates
     };
 }
 
