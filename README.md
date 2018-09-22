@@ -45,7 +45,82 @@ main().catch(console.error);
 
 ## API
 
-> WIP
+### enumServicesStatus(desiredState: number): Promise< Service[] >
+
+Enumerate Windows Services by the desirate state (Default equal to `State.All`). State can be retrieved with the constants **State**.
+
+```ts
+export interface ServiceStates {
+    Active: 0,
+    Inactive: 1,
+    All: 2
+}
+```
+
+The returned value is a Promise that contain an Array of Service.
+
+```ts
+export interface Service {
+    name: string,
+    displayName: string;
+    process: {
+        id?: number;
+        name?: string;
+        currentState: number;
+        serviceType: number;
+        checkPoint: number;
+        controlsAccepted: number;
+        serviceFlags?: number;
+        serviceSpecificExitCode: number;
+        waitHint: number;
+        win32ExitCode: number;
+    };
+}
+```
+
+### enumDependentServices(serviceName: string): Promise< DependentServices >
+Enumerate dependent Windows Services of a given Service name. The returned value is a Promise of Object DependentServices.
+
+```ts
+export interface DependentServices {
+    [serviceName: string]: Service;
+}
+```
+
+> **Warning**: Each Service are a reducted version of the TypeScript interface `Service` (optionals are not in the payload).
+
+### getServiceConfiguration(serviceName: string): Promise< ServiceInformation >
+Get a given Windows Service configuration. The returned value is a Promise of Object ServiceInformation.
+
+```ts
+export interface ServiceInformation {
+    type: number;
+    startType: number;
+    errorControl: number;
+    binaryPath: string;
+    account: string;
+    loadOrderGroup?: string;
+    tagId?: number;
+    dependencies?: string;
+}
+```
+
+### getServiceTriggers(serviceName: string): Promise< ServiceTrigger[] >
+Get all Service triggers for a given Service name. The returned value is a Promise that contain an Array of ServiceTrigger.
+
+```ts
+export interface ServiceTrigger {
+    type: number;
+    action: number;
+    guid: string;
+    dataItems: ServiceTriggerSpecificDataItem[]
+}
+
+export interface ServiceTriggerSpecificDataItem {
+    dataType: number;
+    data?: string;
+}
+```
 
 ## How to build the project
 
