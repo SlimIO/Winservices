@@ -1,9 +1,16 @@
+if (process.platform !== "win32") {
+    throw new Error("Only Windows OS is supported by this test!");
+}
+
 // Require Third-party dependencies
 const test = require("ava");
 const is = require("@sindresorhus/is");
 
 // Require package
 const winservices = require("../index");
+
+// REGEX
+const ReFailedOpenService = /^Failed to Open service for service/;
 
 // Test method getLogicalDrives
 test("Verify constants object", function verifyConstant(assert) {
@@ -51,6 +58,14 @@ test("enumServicesStatus(All)", async function enumServicesStatus(assert) {
     }
 });
 
+// enumServicesStatus - desiredState
+test("enumServicesStatus - desiredState should be typeof number", async function enumServicesStatus(assert) {
+    assert.is(Reflect.has(winservices, "enumServicesStatus"), true);
+
+    const error = await assert.throws(winservices.enumServicesStatus("yop"), Error);
+    assert.is(error.message, "Argument desiredState should be typeof number!");
+});
+
 // Test method enumServicesStatus(States.Active)
 test("enumServicesStatus(Active)", async function enumServicesStatus(assert) {
     assert.is(Reflect.has(winservices, "enumServicesStatus"), true);
@@ -77,6 +92,14 @@ test("enumServicesStatus(Inactive)", async function enumServicesStatus(assert) {
     }
 });
 
+// getServiceConfiguration - serviceName
+test("getServiceConfiguration - serviceName should be typeof string", async function enumServicesStatus(assert) {
+    assert.is(Reflect.has(winservices, "getServiceConfiguration"), true);
+
+    const error = await assert.throws(winservices.getServiceConfiguration(10), Error);
+    assert.is(error.message, "argument serviceName should be typeof string!");
+});
+
 // Test method getServiceConfiguration
 test("getServiceConfiguration", async function getServiceConfiguration(assert) {
     assert.is(Reflect.has(winservices, "enumServicesStatus"), true);
@@ -89,6 +112,7 @@ test("getServiceConfiguration", async function getServiceConfiguration(assert) {
     for (const service of allServices) {
         assert.is(is.string(service.name), true);
         const config = await winservices.getServiceConfiguration(service.name);
+        assert.is(is.plainObject(config), true);
         assert.is(is.number(config.type), true);
         assert.is(is.number(config.errorControl), true);
         assert.is(is.number(config.startType), true);
@@ -106,8 +130,51 @@ test("getServiceConfiguration", async function getServiceConfiguration(assert) {
     }
 });
 
+// getServiceTriggers - serviceName
+test("getServiceTriggers - serviceName should be typeof string", async function enumServicesStatus(assert) {
+    assert.is(Reflect.has(winservices, "getServiceTriggers"), true);
+
+    const error = await assert.throws(winservices.getServiceTriggers(10), Error);
+    assert.is(error.message, "argument serviceName should be typeof string!");
+});
+
+// Test method getServiceTriggers
+test("getServiceTriggers", async function getServiceTriggers(assert) {
+    assert.is(Reflect.has(winservices, "enumServicesStatus"), true);
+    assert.is(Reflect.has(winservices, "getServiceTriggers"), true);
+
+    const allServices = await winservices.enumServicesStatus();
+    assert.is(is.array(allServices), true);
+    assert.is(allServices.length > 0, true);
+
+    for (const service of allServices) {
+        assert.is(is.string(service.name), true);
+        const triggers = await winservices.getServiceTriggers(service.name);
+        assert.is(is.array(triggers), true);
+        for (const trigger of triggers) {
+            assert.is(is.plainObject(trigger), true);
+            assert.is(is.number(trigger.type), true);
+            assert.is(is.number(trigger.action), true);
+            assert.is(is.string(trigger.guid), true);
+            assert.is(is.array(trigger.dataItems), true);
+            for (const item of trigger.dataItems) {
+                assert.is(is.number(item.dataType), true);
+            }
+        }
+    }
+});
+
+// enumDependentServices - serviceName
+test("enumDependentServices - serviceName should be typeof string", async function enumServicesStatus(assert) {
+    assert.is(Reflect.has(winservices, "enumDependentServices"), true);
+
+    const error = await assert.throws(winservices.enumDependentServices(10), Error);
+    assert.is(error.message, "argument serviceName should be typeof string!");
+});
+
+
 // Test method enumDependentServices
-test("enumDependentServices", async function enumServicesStatus(assert) {
+test("enumDependentServices", async function enumDependentServices(assert) {
     assert.is(Reflect.has(winservices, "enumServicesStatus"), true);
     assert.is(Reflect.has(winservices, "enumDependentServices"), true);
 
@@ -126,7 +193,7 @@ test("enumDependentServices", async function enumServicesStatus(assert) {
             }
         }
         catch (error) {
-            // console.log(error);
+            assert.is(ReFailedOpenService.test(error), true);
         }
     }
 });
