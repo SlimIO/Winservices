@@ -18,7 +18,7 @@ declare namespace Winservices {
             name?: string;
             currentState: number;
             serviceType: number;
-            checkPoint: number;
+            checkPoint?: number;
             controlsAccepted: number;
             serviceFlags?: number;
             serviceSpecificExitCode: number;
@@ -53,7 +53,7 @@ declare namespace Winservices {
     export function enumServicesStatus(desiredState?: keyof ServiceStates): Promise<Service[]>;
     export function getServiceConfiguration(serviceName: string): Promise<ServiceInformation>;
     export function getServiceTriggers(serviceName: string): Promise<ServiceTrigger[]>;
-    export function enumDependentServices(serviceName: string): Promise<DependentServices>;
+    export function enumDependentServices(serviceName: string, desiredState?: keyof ServiceStates): Promise<DependentServices>;
     export const constants: {
         States: ServiceStates
     };
