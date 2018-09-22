@@ -50,10 +50,10 @@ declare namespace Winservices {
         data?: string;
     }
 
-    export function enumServicesStatus(desiredState?: keyof ServiceStates): Service[];
-    export function getServiceConfiguration(serviceName: string): ServiceInformation;
-    export function getServiceTriggers(serviceName: string): ServiceTrigger[];
-    export function enumDependentServices(serviceName: string): DependentServices;
+    export function enumServicesStatus(desiredState?: keyof ServiceStates): Promise<Service[]>;
+    export function getServiceConfiguration(serviceName: string): Promise<ServiceInformation>;
+    export function getServiceTriggers(serviceName: string): Promise<ServiceTrigger[]>;
+    export function enumDependentServices(serviceName: string): Promise<DependentServices>;
     export const constants: {
         States: ServiceStates
     };
