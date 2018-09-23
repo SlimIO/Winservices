@@ -28,9 +28,9 @@ declare namespace Winservices {
     }
 
     export interface ServiceInformation {
-        type: number;
-        startType: number;
-        errorControl: number;
+        type: string;
+        startType: string;
+        errorControl: string;
         binaryPath: string;
         account: string;
         loadOrderGroup?: string;

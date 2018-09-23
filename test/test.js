@@ -113,9 +113,9 @@ test("getServiceConfiguration", async function getServiceConfiguration(assert) {
         assert.is(is.string(service.name), true);
         const config = await winservices.getServiceConfiguration(service.name);
         assert.is(is.plainObject(config), true);
-        assert.is(is.number(config.type), true);
-        assert.is(is.number(config.errorControl), true);
-        assert.is(is.number(config.startType), true);
+        assert.is(is.string(config.type), true);
+        assert.is(is.string(config.errorControl), true);
+        assert.is(is.string(config.startType), true);
         assert.is(is.string(config.binaryPath), true);
         assert.is(is.string(config.account), true);
         if (!is.nullOrUndefined(config.loadOrderGroup)) {

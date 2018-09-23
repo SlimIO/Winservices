@@ -321,9 +321,59 @@ class ConfigServiceWorker : public AsyncWorker {
         Object ret = Object::New(Env());
 
         // Setup properties
-        ret.Set("type", config->dwServiceType);
-        ret.Set("startType", config->dwStartType);
-        ret.Set("errorControl", config->dwErrorControl);
+        switch (config->dwServiceType) {
+            case SERVICE_FILE_SYSTEM_DRIVER:
+                ret.Set("type", "FILE_SYSTEM_DRIVER");
+                break;
+            case SERVICE_KERNEL_DRIVER:
+                ret.Set("type", "KERNEL_DRIVER");
+                break;
+            case SERVICE_WIN32_OWN_PROCESS:
+                ret.Set("type", "WIN32_OWN_PROCESS");
+                break;
+            case SERVICE_WIN32_SHARE_PROCESS:
+                ret.Set("type", "WIN32_SHARE_PROCESS");
+                break;
+            case SERVICE_INTERACTIVE_PROCESS:
+                ret.Set("type", "INTERACTIVE_PROCESS");
+                break;
+            default:
+                ret.Set("type", "UNKNOWN");
+                break;
+        }
+
+        switch (config->dwStartType) {
+            case SERVICE_AUTO_START:
+                ret.Set("startType", "AUTO_START");
+                break;
+            case SERVICE_BOOT_START:
+                ret.Set("startType", "BOOT_START");
+                break;
+            case SERVICE_DEMAND_START:
+                ret.Set("startType", "DEMAND_START");
+                break;
+            case SERVICE_DISABLED:
+                ret.Set("startType", "DISABLED");
+                break;
+            case SERVICE_SYSTEM_START:
+                ret.Set("startType", "SYSTEM_START");
+                break;
+        }
+
+        switch (config->dwErrorControl) {
+            case SERVICE_ERROR_CRITICAL:
+                ret.Set("errorControl", "CRITICAL");
+                break;
+            case SERVICE_ERROR_IGNORE:
+                ret.Set("errorControl", "IGNORE");
+                break;
+            case SERVICE_ERROR_NORMAL:
+                ret.Set("errorControl", "NORMAL");
+                break;
+            case SERVICE_ERROR_SEVERE:
+                ret.Set("errorControl", "SEVERE");
+                break;
+        }
         ret.Set("binaryPath", config->lpBinaryPathName);
         ret.Set("account", config->lpServiceStartName);
 
