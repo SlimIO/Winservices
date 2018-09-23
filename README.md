@@ -68,7 +68,7 @@ export interface Service {
         name?: string;
         currentState: number;
         serviceType: number;
-        checkPoint: number;
+        checkPoint?: number;
         controlsAccepted: number;
         serviceFlags?: number;
         serviceSpecificExitCode: number;
@@ -96,14 +96,15 @@ Get a given Windows Service configuration. The returned value is a Promise of Ob
 
 ```ts
 export interface ServiceInformation {
-    type: number;
-    startType: number;
-    errorControl: number;
+    type: string;
+    startType: string;
+    errorControl: string;
     binaryPath: string;
     account: string;
     loadOrderGroup?: string;
     tagId?: number;
     dependencies?: string;
+    description?: string;
 }
 ```
 
