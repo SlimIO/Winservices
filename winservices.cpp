@@ -262,11 +262,13 @@ class ConfigServiceWorker : public AsyncWorker {
     private:
         string serviceName;
         LPQUERY_SERVICE_CONFIG config;
+        LPSERVICE_DESCRIPTION description;
 
     // This code will be executed on the worker thread
     void Execute() {
         SCManager manager;
         BOOL success;
+        DWORD dwBytesNeeded;
 
         // Open Manager!
         success = manager.Open(SC_MANAGER_ENUMERATE_SERVICE);
@@ -286,6 +288,19 @@ class ConfigServiceWorker : public AsyncWorker {
             return SetError("Failed to Query Service Config!");
         }
         config = serviceConfig.lpsc;
+
+        if(!QueryServiceConfig2(manager.service, SERVICE_CONFIG_DESCRIPTION, NULL, 0, &dwBytesNeeded)) {
+            if(ERROR_INSUFFICIENT_BUFFER != GetLastError()){
+                manager.Close();
+                return SetError("QueryServiceConfig2 failed (1)");
+            }
+            description = (LPSERVICE_DESCRIPTION) HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, dwBytesNeeded);
+        }
+ 
+        if (!QueryServiceConfig2(manager.service, SERVICE_CONFIG_DESCRIPTION, (LPBYTE) description, dwBytesNeeded, &dwBytesNeeded))  {
+            manager.Close();
+            return SetError("QueryServiceConfig2 failed (2)");
+        }
 
         manager.Close();
     }
@@ -320,6 +335,9 @@ class ConfigServiceWorker : public AsyncWorker {
         }
         if (config->lpDependencies != NULL && lstrcmp(config->lpDependencies, TEXT("")) != 0) {
             ret.Set("dependencies", config->lpDependencies);
+        }
+        if (description->lpDescription != NULL) {
+            ret.Set("description", description->lpDescription);
         }
 
         Callback().Call({Env().Null(), ret});

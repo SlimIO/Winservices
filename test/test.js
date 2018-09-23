@@ -10,7 +10,7 @@ const is = require("@sindresorhus/is");
 const winservices = require("../index");
 
 // REGEX
-const ReFailedOpenService = /^Failed to Open service for service/;
+const ReFailedOpenService = /Failed\sto\sopen\sService\shandle/;
 
 // Test method getLogicalDrives
 test("Verify constants object", function verifyConstant(assert) {
@@ -126,6 +126,9 @@ test("getServiceConfiguration", async function getServiceConfiguration(assert) {
         }
         if (!is.nullOrUndefined(config.tagId)) {
             assert.is(is.number(config.tagId), true);
+        }
+        if (!is.nullOrUndefined(config.description)) {
+            assert.is(is.string(config.description), true);
         }
     }
 });

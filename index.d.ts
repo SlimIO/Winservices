@@ -36,6 +36,7 @@ declare namespace Winservices {
         loadOrderGroup?: string;
         tagId?: number;
         dependencies?: string;
+        description?: string;
     }
 
     export interface ServiceTrigger {
