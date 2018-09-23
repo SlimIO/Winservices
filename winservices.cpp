@@ -476,7 +476,12 @@ class ServiceTriggersWorker : public AsyncWorker {
                     specificDataItems.Set("data", byteSeqToString(pServiceTrigger.pData, pServiceTrigger.cbData));
                 }
                 else if(pServiceTrigger.dwDataType == SERVICE_TRIGGER_DATA_TYPE_STRING) {
-                    specificDataItems.Set("data", byteSeqToString(pServiceTrigger.pData, pServiceTrigger.cbData));
+                    stringstream data;
+                    for(size_t i = 0; i < pServiceTrigger.cbData; ++i) {
+                        data << (char*) pServiceTrigger.pData;
+                        pServiceTrigger.pData++;
+                    }
+                    specificDataItems.Set("data", data.str());
                 }
             }
         }
