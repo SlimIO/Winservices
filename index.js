@@ -12,7 +12,7 @@ const States = {
     Active: 0,
     Inactive: 1,
     All: 2
-}
+};
 
 /**
  * @async
@@ -25,7 +25,7 @@ const States = {
  * @version 1.0.0
  * @example
  * const { enumServicesStatus, constants: { States } } = require("@slimio/winservices");
- * 
+ *
  * async function main() {
  *     const services = enumServicesStatus(States.Active);
  *     for (const service of services) {
@@ -62,7 +62,7 @@ function enumServicesStatus(desiredState = States.All) {
  *     enumDependentServices,
  *     constants: { States }
  * } = require("@slimio/winservices");
- * 
+ *
  * async function main() {
  *     const services = enumServicesStatus(States.Active);
  *     for (const service of services) {
@@ -101,7 +101,7 @@ function enumDependentServices(serviceName, desiredState = States.All) {
  *     getServiceConfiguration,
  *     constants: { States }
  * } = require("@slimio/winservices");
- * 
+ *
  * async function main() {
  *     const services = enumServicesStatus(States.Active);
  *     for (const service of services) {
@@ -141,7 +141,7 @@ function getServiceConfiguration(serviceName) {
  *     getServiceTriggers,
  *     constants: { States }
  * } = require("@slimio/winservices");
- * 
+ *
  * async function main() {
  *     const services = enumServicesStatus(States.Active);
  *     for (const service of services) {
@@ -176,4 +176,4 @@ module.exports = {
     getServiceConfiguration,
     getServiceTriggers,
     constants: Object.freeze({ States })
-}
+};
