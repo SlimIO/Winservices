@@ -2,7 +2,7 @@
  * @namespace winservices
  * @desc Windows Services - Node.JS low level binding
  */
-const winservices = require("bindings")("winservices.node");
+const winservices = require("node-gyp-build")(__dirname);
 
 /**
  * @const States
