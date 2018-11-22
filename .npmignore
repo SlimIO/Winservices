@@ -2,6 +2,7 @@ test/
 tests/
 coverage/
 .nyc_output/
+build/
 docs/
 jsdoc.json
 CONTRIBUTING.md
