@@ -13,7 +13,7 @@
     }
   },
   "scripts": {
-    "prepublish": "pkg-ok",
+    "prepublishOnly": "pkg-ok",
     "prebuilds": "prebuildify --napi",
     "build": "cross-env node-gyp configure && node-gyp build",
     "test": "ava --verbose",
