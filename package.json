@@ -26,7 +26,15 @@
     "type": "git",
     "url": "git+https://github.com/SlimIO/Winservices.git"
   },
-  "keywords": [],
+  "keywords": [
+      "SlimIO",
+      "Monitoring",
+      "Windows",
+      "Services",
+      "Binding",
+      "NAPI",
+      "Microsoft"
+  ],
   "author": "SlimIO",
   "license": "MIT",
   "gypfile": true,
