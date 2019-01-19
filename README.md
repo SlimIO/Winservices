@@ -1,4 +1,8 @@
 # Winservices
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/SlimIO/Winservices/commit-activity)
+[![GitHub license](https://img.shields.io/github/license/Naereen/StrapDown.js.svg)](https://github.com/SlimIO/Nixmem/blob/master/LICENSE)
+![V1.2](https://img.shields.io/badge/version-1.2.0-blue.svg)
+![N-API](https://img.shields.io/badge/N--API-experimental-orange.svg)
 
 SlimIO Windows Services is a NodeJS Binding which expose low-level Microsoft APIs on Services.
 
