@@ -55,7 +55,8 @@ main().catch(console.error);
 
 ## API
 
-### enumServicesStatus(desiredState: number): Promise< Service[] >
+<details><summary>enumServicesStatus(desiredState: number): Promise< Service[] ></summary>
+<br />
 
 Enumerate Windows Services by the desirate state (Default equal to `State.All`). State can be retrieved with the constants **State**.
 
@@ -87,8 +88,11 @@ export interface Service {
     };
 }
 ```
+</details>
 
-### enumDependentServices(serviceName: string, desiredState?: number): Promise< DependentServices >
+<details><summary>enumDependentServices(serviceName: string, desiredState?: number): Promise< DependentServices ></summary>
+<br />
+
 Enumerate dependent Windows Services of a given Service name. The returned value is a Promise of Object DependentServices.
 
 Default value for desiredState is `State.All`.
@@ -100,8 +104,11 @@ export interface DependentServices {
 ```
 
 > **Warning**: Each Service are a reducted version of the TypeScript interface `Service` (optionals are not in the payload).
+</details>
 
-### getServiceConfiguration(serviceName: string): Promise< ServiceInformation >
+<details><summary>getServiceConfiguration(serviceName: string): Promise< ServiceInformation ></summary>
+<br />
+
 Get a given Windows Service configuration. The returned value is a Promise of Object ServiceInformation.
 
 ```ts
@@ -117,8 +124,11 @@ export interface ServiceInformation {
     description?: string;
 }
 ```
+</details>
 
-### getServiceTriggers(serviceName: string): Promise< ServiceTrigger[] >
+<details><summary>getServiceTriggers(serviceName: string): Promise< ServiceTrigger[] ></summary>
+<br />
+
 Get all Service triggers for a given Service name. The returned value is a Promise that contain an Array of ServiceTrigger.
 
 ```ts
@@ -134,6 +144,7 @@ export interface ServiceTriggerSpecificDataItem {
     data?: string;
 }
 ```
+</details>
 
 ## Contribution Guidelines
 To contribute to the project, please read the [code of conduct](https://github.com/SlimIO/Governance/blob/master/COC_POLICY.md) and the guide for [N-API compilation](https://github.com/SlimIO/Governance/blob/master/docs/native_addons.md).
