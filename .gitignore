@@ -65,3 +65,5 @@ build
 .obj
 .vscode
 prebuilds/
+jsdoc/
+docs/
