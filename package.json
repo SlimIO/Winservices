@@ -35,6 +35,14 @@
     "NAPI",
     "Microsoft"
   ],
+  "nyc": {
+    "check-coverage": true,
+    "per-file": false,
+    "lines": 98,
+    "statements": 98,
+    "functions": 98,
+    "branches": 90
+  },
   "author": "SlimIO",
   "license": "MIT",
   "gypfile": true,
