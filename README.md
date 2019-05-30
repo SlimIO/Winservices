@@ -17,7 +17,7 @@ This binding expose the following methods/struct:
 - [EnumDependentServices](https://docs.microsoft.com/en-us/windows/desktop/api/winsvc/nf-winsvc-enumdependentservicesa)
 
 ## Requirements
-- Node.js v10 or higher 
+- Node.js v10 or higher
 
 ## Getting Started
 
@@ -148,6 +148,13 @@ export interface ServiceTriggerSpecificDataItem {
 
 ## Contribution Guidelines
 To contribute to the project, please read the [code of conduct](https://github.com/SlimIO/Governance/blob/master/COC_POLICY.md) and the guide for [N-API compilation](https://github.com/SlimIO/Governance/blob/master/docs/native_addons.md).
+
+## Dependencies
+
+|Name|Refactoring|Security Risk|Usage|
+|---|---|---|---|
+|[node-addon-api](https://github.com/nodejs/node-addon-api)|⚠️Major|Low|Node.js C++ addon api|
+|[node-gyp-build](https://github.com/prebuild/node-gyp-build)|⚠️Major|Low|Node-gyp builder|
 
 ## License
 MIT
