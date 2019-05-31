@@ -3,7 +3,8 @@
 ![N-API](https://img.shields.io/badge/N--API-v3-green.svg)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/SlimIO/Winservices/commit-activity)
 [![GitHub license](https://img.shields.io/github/license/Naereen/StrapDown.js.svg)](https://github.com/SlimIO/Nixmem/blob/master/LICENSE)
-![2DEP](https://img.shields.io/badge/Dependencies-2-yellow.svg)
+![dep](https://img.shields.io/david/SlimIO/Winservices.svg)
+![size](https://img.shields.io/bundlephobia/min/@slimio/winservices.svg)
 [![Known Vulnerabilities](https://snyk.io/test/github/SlimIO/Winservices/badge.svg?targetFile=package.json)](https://snyk.io/test/github/SlimIO/Winservices?targetFile=package.json)
 [![Build Status](https://travis-ci.com/SlimIO/Winservices.svg?branch=master)](https://travis-ci.com/SlimIO/Winservices) [![Greenkeeper badge](https://badges.greenkeeper.io/SlimIO/Winservices.svg)](https://greenkeeper.io/)
 
