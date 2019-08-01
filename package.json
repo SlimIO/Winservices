@@ -43,6 +43,13 @@
     "functions": 98,
     "branches": 90
   },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "winservices.cpp",
+    "binding.gyp",
+    "include/*.h"
+  ],
   "author": "SlimIO",
   "license": "MIT",
   "gypfile": true,
