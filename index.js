@@ -1,11 +1,13 @@
+"use strict";
+
 /**
  * @namespace winservices
- * @desc Windows Services - Node.JS low level binding
+ * @description Windows Services - Node.JS low level binding
  */
 const winservices = require("node-gyp-build")(__dirname);
 
 /**
- * @const States
+ * @constant States
  * @type {Winservices.ServiceStates}
  */
 const States = {
@@ -18,9 +20,9 @@ const States = {
  * @async
  * @function enumServicesStatus
  * @memberof winservices#
- * @desc Enumerate Windows Service by a given state
- * @param {!Number} [desiredState=2] desired service State (Active, Inactive, All).
- * @return {Promise<Winservices.Service[]>}
+ * @description Enumerate Windows Service by a given state
+ * @param {!number} [desiredState=2] desired service State (Active, Inactive, All).
+ * @returns {Promise<Winservices.Service[]>}
  *
  * @version 1.0.0
  * @example
@@ -50,10 +52,10 @@ function enumServicesStatus(desiredState = States.All) {
  * @async
  * @function enumDependentServices
  * @memberof winservices#
- * @desc Enumerate Dependent Service of a given Service
- * @param {!String} serviceName service name on which we have to seek for dependent services!
- * @param {!Number} desiredState desired state of dependent services.
- * @return {Promise<Winservices.DependentServices>}
+ * @description Enumerate Dependent Service of a given Service
+ * @param {!string} serviceName service name on which we have to seek for dependent services!
+ * @param {!number} desiredState desired state of dependent services.
+ * @returns {Promise<Winservices.DependentServices>}
  *
  * @version 1.0.0
  * @example
@@ -90,9 +92,9 @@ function enumDependentServices(serviceName, desiredState = States.All) {
  * @async
  * @function getServiceConfiguration
  * @memberof winservices#
- * @desc Get a given service configuration
- * @param {!String} serviceName service name
- * @return {Promise<Winservices.ServiceInformation>}
+ * @description Get a given service configuration
+ * @param {!string} serviceName service name
+ * @returns {Promise<Winservices.ServiceInformation>}
  *
  * @version 1.0.0
  * @example
@@ -130,9 +132,9 @@ function getServiceConfiguration(serviceName) {
  * @async
  * @function getServiceTriggers
  * @memberof winservices#
- * @desc Retrieve all triggers of a given service!
- * @param {!String} serviceName service name
- * @return {Promise<Winservices.ServiceTrigger[]>}
+ * @description Retrieve all triggers of a given service!
+ * @param {!string} serviceName service name
+ * @returns {Promise<Winservices.ServiceTrigger[]>}
  *
  * @version 1.0.0
  * @example

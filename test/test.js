@@ -1,3 +1,5 @@
+"use strict";
+
 if (process.platform !== "win32") {
     throw new Error("Only Windows OS is supported by this test!");
 }
@@ -25,6 +27,12 @@ test("Verify constants object", function verifyConstant(assert) {
 });
 
 // Check Service payload
+/**
+ * @function checkService
+ * @param {*} assert *
+ * @param {*} service *
+ * @param {*} strict *
+ */
 function checkService(assert, service, strict = true) {
     assert.is(is.plainObject(service), true);
     assert.is(is.string(service.name), true);
