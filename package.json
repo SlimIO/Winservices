@@ -20,7 +20,9 @@
     "doc": "jsdoc -c ./jsdoc.json -r -R ./README.md -P ./package.json --verbose",
     "coverage": "nyc npm test",
     "report": "nyc report --reporter=html",
-    "install": "node-gyp rebuild"
+    "install": "node-gyp rebuild",
+    "snyk-protect": "snyk protect",
+    "prepare": "npm run snyk-protect"
   },
   "repository": {
     "type": "git",
@@ -59,7 +61,8 @@
   "homepage": "https://github.com/SlimIO/Winservices#readme",
   "dependencies": {
     "node-addon-api": "^1.7.1",
-    "node-gyp-build": "^4.1.0"
+    "node-gyp-build": "^4.1.0",
+    "snyk": "^1.211.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^8.1.0",
@@ -76,5 +79,6 @@
     "nyc": "^14.1.1",
     "pkg-ok": "^2.3.1",
     "prebuildify": "^3.0.1"
-  }
+  },
+  "snyk": true
 }
