@@ -59,7 +59,7 @@
   "homepage": "https://github.com/SlimIO/Winservices#readme",
   "dependencies": {
     "node-addon-api": "^2.0.0",
-    "node-gyp-build": "^4.1.0"
+    "node-gyp-build": "^4.2.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^8.2.0",
