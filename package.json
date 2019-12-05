@@ -4,7 +4,7 @@
   "description": "Windows Services - Node.JS low level binding",
   "main": "index.js",
   "engines": {
-    "node": ">=10"
+    "node": ">=12"
   },
   "husky": {
     "hooks": {
