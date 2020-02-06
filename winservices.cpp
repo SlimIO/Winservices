@@ -579,6 +579,7 @@ Napi::Value enumServicesStatus(const Napi::CallbackInfo& info) {
     int32_t desiredState;
     DWORD serviceState = SERVICE_STATE_ALL;
     Napi::Function cb;
+    std::string host;
 
     if (info.Length() < 2) {
         Napi::Error::New(env, "Wrong number of argument provided!").ThrowAsJavaScriptException();
@@ -600,9 +601,7 @@ Napi::Value enumServicesStatus(const Napi::CallbackInfo& info) {
     desiredState = info[0].As<Napi::Number>().Int32Value();
     Napi::Object options = info[1].As<Napi::Object>();
     cb = info[2].As<Napi::Function>();
-
-    std::string host = options.Get("host").As<Napi::String>().Utf8Value();
-    std::cout << "hostname: " << host << "\n";
+    host = options.Get("host").As<Napi::String>().Utf8Value();
 
     serviceState = getServiceState(desiredState);
     (new EnumServicesWorker(cb, serviceState, host))->Queue();
