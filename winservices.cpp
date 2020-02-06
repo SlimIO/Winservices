@@ -8,17 +8,15 @@
 #include <unordered_map>
 #include <string>
 
-using namespace std;
-
 const char FAILED_MANAGER[] = "Failed to open SCManager handle";
 const char FAILED_SERVICE[] = "Failed to open Service handle";
 
-typedef unordered_map<DWORD, string> PROCESSESMAP;
+typedef std::unordered_map<DWORD, std::string> PROCESSESMAP;
 
 /*
  * Function to Convert GUID to std::string
  */
-string guidToString(GUID guid) {
+std::string guidToString(GUID guid) {
 	char guid_cstr[39];
 	snprintf(guid_cstr, sizeof(guid_cstr),
 	         "{%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x}",
@@ -26,17 +24,17 @@ string guidToString(GUID guid) {
 	         guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3],
 	         guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
 
-	return string(guid_cstr);
+	return std::string(guid_cstr);
 }
 
 /*
  * Retrieve last message error with code of GetLastError()
  */
-string getLastErrorMessage() {
+std::string getLastErrorMessage() {
     char err[256];
     FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(),
                 MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), err, 255, NULL);
-    return string(err);
+    return std::string(err);
 }
 
 /**
@@ -69,8 +67,8 @@ BOOL getProcessNameAndId(PROCESSESMAP* procMap) {
 
     // Insert rows in the processes map
     do {
-        wstring wSzExeFile((wchar_t*) pe32.szExeFile);
-        procMap->insert(make_pair(pe32.th32ProcessID, string(wSzExeFile.begin(), wSzExeFile.end())));
+        std::wstring wSzExeFile((wchar_t*) pe32.szExeFile);
+        procMap->insert(std::make_pair(pe32.th32ProcessID, std::string(wSzExeFile.begin(), wSzExeFile.end())));
     } while (Process32Next(hProcessSnap, &pe32));
 
     CloseHandle(hProcessSnap);
@@ -100,12 +98,12 @@ DWORD getServiceState(int32_t desiredState) {
 /*
  * Byte sequence to std::string
  */
-string byteSeqToString(const unsigned char bytes[], size_t n) {
-    ostringstream stm;
-    stm << hex << uppercase;
+std::string byteSeqToString(const unsigned char bytes[], size_t n) {
+    std::ostringstream stm;
+    stm << std::hex << std::uppercase;
 
     for(size_t i = 0; i < n; ++i) {
-        stm << setw(2) << setfill('0') << unsigned(bytes[i]);
+        stm << std::setw(2) << std::setfill('0') << unsigned(bytes[i]);
     }
 
     return stm.str();
@@ -134,23 +132,20 @@ class EnumServicesWorker : public Napi::AsyncWorker {
         SCManager manager;
         BOOL success;
 
-        // Retrieve processes name and id!
         processesMap = new PROCESSESMAP;
         success = getProcessNameAndId(processesMap);
         if (!success) {
             return SetError("Failed to retrieve process names and ids");
         }
 
-        // Open SC-Manager
         success = manager.Open(SC_MANAGER_ENUMERATE_SERVICE);
         if (!success) {
             return SetError(FAILED_MANAGER);
         }
 
-        // Enumerate services
         EnumServicesResponse enumRet = manager.EnumServicesStatus(serviceState, &servicesNum);
         if (!enumRet.status) {
-            stringstream error;
+            std::stringstream error;
             error << "Failed to enumerate Windows Services by state (" << serviceState << ")";
             return SetError(error.str());
         }
@@ -161,7 +156,7 @@ class EnumServicesWorker : public Napi::AsyncWorker {
 
     void OnError(const Napi::Error& e) {
         DWORD errorCode = GetLastError();
-        stringstream error;
+        std::stringstream error;
         error << e.what();
         if (errorCode != 0) {
             error << " - code (" << errorCode << ") - " << getLastErrorMessage();
@@ -183,10 +178,9 @@ class EnumServicesWorker : public Napi::AsyncWorker {
             service = *lpServiceStatus;
             processId = service.ServiceStatusProcess.dwProcessId;
 
-            // Create and push JavaScript Object
             Napi::Object JSObject = Napi::Object::New(Env());
-
             Napi::Object statusProcess = Napi::Object::New(Env());
+
             statusProcess.Set("id", processId);
             statusProcess.Set("name", processesMap->find(processId)->second.c_str());
             statusProcess.Set("currentState", service.ServiceStatusProcess.dwCurrentState);
@@ -217,30 +211,27 @@ class EnumServicesWorker : public Napi::AsyncWorker {
  */
 Napi::Value enumServicesStatus(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
+    int32_t desiredState;
     DWORD serviceState = SERVICE_STATE_ALL;
+    Napi::Function cb;
 
-    // Check if there is less than two argument, if then throw a JavaScript exception
     if (info.Length() < 2) {
         Napi::Error::New(env, "Wrong number of argument provided!").ThrowAsJavaScriptException();
         return env.Null();
     }
-
-    // The first argument (desiredState) should be typeof Napi::Number
     if (!info[0].IsNumber()) {
         Napi::Error::New(env, "Argument desiredState should be typeof number!").ThrowAsJavaScriptException();
         return env.Null();
     }
-
-    // callback should be a Napi::Function
     if (!info[1].IsFunction()) {
         Napi::Error::New(env, "Argument callback should be a Function!").ThrowAsJavaScriptException();
         return env.Null();
     }
 
-    // Execute worker
-    int32_t desiredState = info[0].As<Napi::Number>().Int32Value();
+    desiredState = info[0].As<Napi::Number>().Int32Value();
+    cb = info[1].As<Napi::Function>();
+
     serviceState = getServiceState(desiredState);
-    Napi::Function cb = info[1].As<Napi::Function>();
     (new EnumServicesWorker(cb, serviceState))->Queue();
 
     return env.Undefined();
@@ -255,11 +246,11 @@ Napi::Value enumServicesStatus(const Napi::CallbackInfo& info) {
  */
 class ConfigServiceWorker : public Napi::AsyncWorker {
     public:
-        ConfigServiceWorker(Napi::Function& callback, string serviceName) : AsyncWorker(callback), serviceName(serviceName) {}
+        ConfigServiceWorker(Napi::Function& callback, std::string serviceName) : AsyncWorker(callback), serviceName(serviceName) {}
         ~ConfigServiceWorker() {}
 
     private:
-        string serviceName;
+        std::string serviceName;
         LPQUERY_SERVICE_CONFIG config;
         LPSERVICE_DESCRIPTION description;
 
@@ -306,7 +297,7 @@ class ConfigServiceWorker : public Napi::AsyncWorker {
 
     void OnError(const Napi::Error& e) {
         DWORD errorCode = GetLastError();
-        stringstream error;
+        std::stringstream error;
         error << e.what() << " for " << serviceName;
         if (errorCode != 0) {
             error << " - code (" << errorCode << ") - " << getLastErrorMessage();
@@ -395,32 +386,29 @@ class ConfigServiceWorker : public Napi::AsyncWorker {
 };
 
 /*
- * Retrieve Service configuration
+ * Retrieve a given Service configuration (binding interface)
  */
 Napi::Value getServiceConfiguration(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
+    std::string serviceName;
+    Napi::Function cb;
 
-    // Check if there is less than two argument, if then throw a JavaScript exception
     if (info.Length() < 2) {
         Napi::Error::New(env, "Wrong number of argument provided!").ThrowAsJavaScriptException();
         return env.Null();
     }
-
-    // The first argument (serviceName) should be typeof Napi::String
     if (!info[0].IsString()) {
         Napi::Error::New(env, "argument serviceName should be typeof string!").ThrowAsJavaScriptException();
         return env.Null();
     }
-
-    // callback should be a Napi::Function
     if (!info[1].IsFunction()) {
         Napi::Error::New(env, "Argument callback should be a Function!").ThrowAsJavaScriptException();
         return env.Null();
     }
 
-    // Retrieve service Name and execute worker!
-    string serviceName = info[0].As<Napi::String>().Utf8Value();
-    Napi::Function cb = info[1].As<Napi::Function>();
+    serviceName = info[0].As<Napi::String>().Utf8Value();
+    cb = info[1].As<Napi::Function>();
+
     (new ConfigServiceWorker(cb, serviceName))->Queue();
 
     return env.Undefined();
@@ -436,11 +424,11 @@ Napi::Value getServiceConfiguration(const Napi::CallbackInfo& info) {
  */
 class ServiceTriggersWorker : public Napi::AsyncWorker {
     public:
-        ServiceTriggersWorker(Napi::Function& callback, string serviceName) : AsyncWorker(callback), serviceName(serviceName) {}
+        ServiceTriggersWorker(Napi::Function& callback, std::string serviceName) : AsyncWorker(callback), serviceName(serviceName) {}
         ~ServiceTriggersWorker() {}
 
     private:
-        string serviceName;
+        std::string serviceName;
         SERVICE_TRIGGER_INFO *triggers = {0};
 
     // This code will be executed on the worker thread
@@ -452,13 +440,11 @@ class ServiceTriggersWorker : public Napi::AsyncWorker {
         void* buf = NULL;
         DWORD dwBytesNeeded, cbBufSize;
 
-        // Open Manager!
         success = manager.Open(SC_MANAGER_ENUMERATE_SERVICE);
         if (!success) {
             return SetError(FAILED_MANAGER);
         }
 
-        // Open Service!
         success = manager.DeclareService(serviceName, SERVICE_QUERY_CONFIG);
         if (!success) {
             return SetError(FAILED_SERVICE);
@@ -487,7 +473,7 @@ class ServiceTriggersWorker : public Napi::AsyncWorker {
 
     void OnError(const Napi::Error& e) {
         DWORD errorCode = GetLastError();
-        stringstream error;
+        std::stringstream error;
         error << e.what() << " for " << serviceName;
         if (errorCode != 0) {
             error << " - code (" << errorCode << ") - " << getLastErrorMessage();
@@ -511,7 +497,7 @@ class ServiceTriggersWorker : public Napi::AsyncWorker {
             trigger.Set("action", currTrigger->dwAction);
             trigger.Set("dataItems", dataItems);
 
-            string guid = guidToString(*currTrigger->pTriggerSubtype);
+            std::string guid = guidToString(*currTrigger->pTriggerSubtype);
             trigger.Set("guid", guid.c_str());
 
             ret[i] = trigger;
@@ -525,7 +511,7 @@ class ServiceTriggersWorker : public Napi::AsyncWorker {
                     specificDataItems.Set("data", byteSeqToString(pServiceTrigger.pData, pServiceTrigger.cbData));
                 }
                 else if(pServiceTrigger.dwDataType == SERVICE_TRIGGER_DATA_TYPE_STRING) {
-                    stringstream data;
+                    std::stringstream data;
                     for(size_t i = 0; i < pServiceTrigger.cbData; ++i) {
                         data << (char*) pServiceTrigger.pData;
                         pServiceTrigger.pData++;
@@ -541,32 +527,29 @@ class ServiceTriggersWorker : public Napi::AsyncWorker {
 };
 
 /*
- * Retrieve Service triggers (interface binding).
+ * Retrieve a given service triggers (interface binding).
  */
 Napi::Value getServiceTriggers(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
+    std::string serviceName;
+    Napi::Function cb;
 
-    // Check if there is less than two argument, if then throw a JavaScript exception
     if (info.Length() < 2) {
         Napi::Error::New(env, "Wrong number of argument provided!").ThrowAsJavaScriptException();
         return env.Null();
     }
-
-    // The first argument (serviceName) should be typeof Napi::String
     if (!info[0].IsString()) {
         Napi::Error::New(env, "argument serviceName should be typeof string!").ThrowAsJavaScriptException();
         return env.Null();
     }
-
-    // callback should be a Napi::Function
     if (!info[1].IsFunction()) {
         Napi::Error::New(env, "Argument callback should be a Function!").ThrowAsJavaScriptException();
         return env.Null();
     }
 
-    // Retrieve service Name and execute worker
-    string serviceName = info[0].As<Napi::String>().Utf8Value();
-    Napi::Function cb = info[1].As<Napi::Function>();
+    serviceName = info[0].As<Napi::String>().Utf8Value();
+    cb = info[1].As<Napi::Function>();
+
     (new ServiceTriggersWorker(cb, serviceName))->Queue();
 
     return env.Undefined();
@@ -582,12 +565,12 @@ Napi::Value getServiceTriggers(const Napi::CallbackInfo& info) {
  */
 class DependentServiceWorker : public Napi::AsyncWorker {
     public:
-        DependentServiceWorker(Napi::Function& callback, string serviceName, DWORD serviceState) :
+        DependentServiceWorker(Napi::Function& callback, std::string serviceName, DWORD serviceState) :
         AsyncWorker(callback), serviceName(serviceName), serviceState(serviceState) {}
         ~DependentServiceWorker() {}
 
     private:
-        string serviceName;
+        std::string serviceName;
         LPENUM_SERVICE_STATUSA lpDependencies = NULL;
         DWORD serviceState;
         DWORD nbReturned;
@@ -635,7 +618,7 @@ class DependentServiceWorker : public Napi::AsyncWorker {
 
     void OnError(const Napi::Error& e) {
         DWORD errorCode = GetLastError();
-        stringstream error;
+        std::stringstream error;
         error << e.what() << " for " << serviceName;
         if (errorCode != 0) {
             error << " - code (" << errorCode << ") - " << getLastErrorMessage();
@@ -652,11 +635,13 @@ class DependentServiceWorker : public Napi::AsyncWorker {
         for (DWORD i = 0; i < nbReturned; ++i) {
             SecureZeroMemory(&service, sizeof(service));
             service = *(lpDependencies + i);
+
             Napi::Object JSObject = Napi::Object::New(Env());
+            Napi::Object statusProcess = Napi::Object::New(Env());
 
             JSObject.Set("name", service.lpServiceName);
             JSObject.Set("displayName", service.lpDisplayName);
-            Napi::Object statusProcess = Napi::Object::New(Env());
+
             statusProcess.Set("currentState", service.ServiceStatus.dwCurrentState);
             statusProcess.Set("checkpoint", service.ServiceStatus.dwCheckPoint);
             statusProcess.Set("controlsAccepted", service.ServiceStatus.dwControlsAccepted);
@@ -682,36 +667,32 @@ class DependentServiceWorker : public Napi::AsyncWorker {
 Napi::Value enumDependentServices(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
     DWORD serviceState = SERVICE_STATE_ALL;
+    int32_t desiredState;
+    std::string serviceName;
+    Napi::Function cb;
 
-    // Check if there is less than two argument, if then throw a JavaScript exception
     if (info.Length() < 3) {
         Napi::Error::New(env, "Wrong number of argument provided!").ThrowAsJavaScriptException();
         return env.Null();
     }
-
-    // The first argument (serviceName) should be typeof Napi::String
     if (!info[0].IsString()) {
         Napi::Error::New(env, "argument serviceName should be typeof string!").ThrowAsJavaScriptException();
         return env.Null();
     }
-
-        // The first argument (desiredState) should be typeof Napi::Number
     if (!info[1].IsNumber()) {
         Napi::Error::New(env, "Argument desiredState should be typeof number!").ThrowAsJavaScriptException();
         return env.Null();
     }
-
-    // callback should be a Napi::Function
     if (!info[2].IsFunction()) {
         Napi::Error::New(env, "Argument callback should be a Function!").ThrowAsJavaScriptException();
         return env.Null();
     }
 
-    // Retrieve service Name
-    string serviceName = info[0].As<Napi::String>().Utf8Value();
-    int32_t desiredState = info[1].As<Napi::Number>().Int32Value();
+    serviceName = info[0].As<Napi::String>().Utf8Value();
+    desiredState = info[1].As<Napi::Number>().Int32Value();
+    cb = info[2].As<Napi::Function>();
+
     serviceState = getServiceState(desiredState);
-    Napi::Function cb = info[2].As<Napi::Function>();
     (new DependentServiceWorker(cb, serviceName, serviceState))->Queue();
 
     return env.Undefined();
