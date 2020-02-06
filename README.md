@@ -9,9 +9,9 @@
 [![Build Status](https://travis-ci.com/SlimIO/Winservices.svg?branch=master)](https://travis-ci.com/SlimIO/Winservices)
 [![Greenkeeper badge](https://badges.greenkeeper.io/SlimIO/Winservices.svg)](https://greenkeeper.io/)
 
-SlimIO Windows Services is a NodeJS Binding which expose low-level Microsoft APIs on Services.
+SlimIO Windows Services is a Node.js Binding which expose low-level Microsoft APIs to fetch Services state, configuration and triggers.
 
-This binding expose the following methods/struct:
+The binding expose the following methods/struct:
 
 - [ENUM_SERVICE_STATUS_PROCESS](https://docs.microsoft.com/en-us/windows/desktop/api/winsvc/ns-winsvc-_enum_service_status_processa)
 - [SERVICE_CONFIG](https://docs.microsoft.com/en-us/windows/desktop/services/querying-a-service-s-configuration)
@@ -36,18 +36,15 @@ $ yarn add @slimio/winservices
 Get all active windows services and retrieve advanced informations for each of them in series.
 
 ```js
-const {
-    enumServicesStatus,
-    getServiceConfiguration,
-    constants: { States }
-} = require("@slimio/winservices");
+const services = require("@slimio/winservices");
+const { States } = services.constants;
 
 async function main() {
-    const activeServices = await enumServicesStatus(States.Active);
+    const activeServices = await services.enumServicesStatus(States.Active);
 
     for (const service of activeServices) {
         console.log(`service name: ${service.name}`);
-        const serviceConfig = await getServiceConfiguration(service.name);
+        const serviceConfig = await services.getServiceConfiguration(service.name);
         console.log(JSON.stringify(serviceConfig, null, 4));
         console.log("------------------------------\n");
     }
