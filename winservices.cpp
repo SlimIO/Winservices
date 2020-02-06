@@ -9,7 +9,6 @@
 #include <string>
 
 using namespace std;
-using namespace Napi;
 
 const char FAILED_MANAGER[] = "Failed to open SCManager handle";
 const char FAILED_SERVICE[] = "Failed to open Service handle";
@@ -42,44 +41,44 @@ string getLastErrorMessage() {
 
 /**
  * Retrieve Process Name and ID
- * 
+ *
  * @header: tlhelp32.h
  * @doc: https://docs.microsoft.com/en-us/windows/desktop/api/tlhelp32/nf-tlhelp32-createtoolhelp32snapshot
  * @doc: https://docs.microsoft.com/en-us/windows/desktop/api/tlhelp32/nf-tlhelp32-process32first
  * @doc: https://docs.microsoft.com/en-us/windows/desktop/api/tlhelp32/nf-tlhelp32-process32next
- */ 
+ */
 BOOL getProcessNameAndId(PROCESSESMAP* procMap) {
     PROCESSENTRY32 pe32;
     HANDLE hProcessSnap;
- 
+
     // Take a snapshot of all processes in the system.
     hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (hProcessSnap == INVALID_HANDLE_VALUE) {
         return false;
     }
- 
+
     // Set the size of the structure before using it.
     pe32.dwSize = sizeof(PROCESSENTRY32);
- 
+
     // Retrieve information about the first process,
     // and exit if unsuccessful
     if (!Process32First(hProcessSnap, &pe32)) {
         CloseHandle(hProcessSnap); // clean the snapshot object
         return false;
     }
-    
+
     // Insert rows in the processes map
     do {
         wstring wSzExeFile((wchar_t*) pe32.szExeFile);
         procMap->insert(make_pair(pe32.th32ProcessID, string(wSzExeFile.begin(), wSzExeFile.end())));
     } while (Process32Next(hProcessSnap, &pe32));
- 
+
     CloseHandle(hProcessSnap);
     return true;
 }
 
 /*
- * Translate the int32_t desiredState to a DWORD valid ENUMERATION
+ * Translate the int32_t desiredState to a valid DWORD ENUMERATION
  */
 DWORD getServiceState(int32_t desiredState) {
     DWORD state;
@@ -114,14 +113,14 @@ string byteSeqToString(const unsigned char bytes[], size_t n) {
 
 /*
  * Asynchronous Worker to Enumerate Windows Services
- * 
+ *
  * @header: windows.h
  * @doc: https://docs.microsoft.com/en-us/windows/desktop/api/winsvc/ns-winsvc-_enum_service_status_processa
  * @doc: https://docs.microsoft.com/en-us/windows/desktop/api/winsvc/ns-winsvc-_service_status_process
  */
-class EnumServicesWorker : public AsyncWorker {
+class EnumServicesWorker : public Napi::AsyncWorker {
     public:
-        EnumServicesWorker(Function& callback, DWORD serviceState) : AsyncWorker(callback), serviceState(serviceState) {}
+        EnumServicesWorker(Napi::Function& callback, DWORD serviceState) : AsyncWorker(callback), serviceState(serviceState) {}
         ~EnumServicesWorker() {}
 
     private:
@@ -160,7 +159,7 @@ class EnumServicesWorker : public AsyncWorker {
         manager.Close();
     }
 
-    void OnError(const Error& e) {
+    void OnError(const Napi::Error& e) {
         DWORD errorCode = GetLastError();
         stringstream error;
         error << e.what();
@@ -168,12 +167,12 @@ class EnumServicesWorker : public AsyncWorker {
             error << " - code (" << errorCode << ") - " << getLastErrorMessage();
         }
 
-        Callback().Call({String::New(Env(), error.str()), Env().Null()});
+        Callback().Call({Napi::String::New(Env(), error.str()), Env().Null()});
     }
 
     void OnOK() {
-        HandleScope scope(Env());
-        Array ret = Array::New(Env());
+        Napi::HandleScope scope(Env());
+        Napi::Array ret = Napi::Array::New(Env());
         unsigned arrIndex = 0;
 
         ENUM_SERVICE_STATUS_PROCESS service;
@@ -183,11 +182,11 @@ class EnumServicesWorker : public AsyncWorker {
             SecureZeroMemory(&processId, sizeof(processId));
             service = *lpServiceStatus;
             processId = service.ServiceStatusProcess.dwProcessId;
-        
-            // Create and push JavaScript Object
-            Object JSObject = Object::New(Env());
 
-            Object statusProcess = Object::New(Env());
+            // Create and push JavaScript Object
+            Napi::Object JSObject = Napi::Object::New(Env());
+
+            Napi::Object statusProcess = Napi::Object::New(Env());
             statusProcess.Set("id", processId);
             statusProcess.Set("name", processesMap->find(processId)->second.c_str());
             statusProcess.Set("currentState", service.ServiceStatusProcess.dwCurrentState);
@@ -212,36 +211,36 @@ class EnumServicesWorker : public AsyncWorker {
     }
 
 };
- 
+
 /*
  * Enumerate Windows Services (binding interface).
  */
-Value enumServicesStatus(const CallbackInfo& info) {
-    Env env = info.Env();
+Napi::Value enumServicesStatus(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
     DWORD serviceState = SERVICE_STATE_ALL;
 
     // Check if there is less than two argument, if then throw a JavaScript exception
     if (info.Length() < 2) {
-        Error::New(env, "Wrong number of argument provided!").ThrowAsJavaScriptException();
+        Napi::Error::New(env, "Wrong number of argument provided!").ThrowAsJavaScriptException();
         return env.Null();
     }
 
     // The first argument (desiredState) should be typeof Napi::Number
     if (!info[0].IsNumber()) {
-        Error::New(env, "Argument desiredState should be typeof number!").ThrowAsJavaScriptException();
+        Napi::Error::New(env, "Argument desiredState should be typeof number!").ThrowAsJavaScriptException();
         return env.Null();
     }
 
     // callback should be a Napi::Function
     if (!info[1].IsFunction()) {
-        Error::New(env, "Argument callback should be a Function!").ThrowAsJavaScriptException();
+        Napi::Error::New(env, "Argument callback should be a Function!").ThrowAsJavaScriptException();
         return env.Null();
     }
 
     // Execute worker
-    int32_t desiredState = info[0].As<Number>().Int32Value();
+    int32_t desiredState = info[0].As<Napi::Number>().Int32Value();
     serviceState = getServiceState(desiredState);
-    Function cb = info[1].As<Function>();
+    Napi::Function cb = info[1].As<Napi::Function>();
     (new EnumServicesWorker(cb, serviceState))->Queue();
 
     return env.Undefined();
@@ -249,14 +248,14 @@ Value enumServicesStatus(const CallbackInfo& info) {
 
 /*
  * Asynchronous Worker to retrieve the configuration of a given Service (name)
- * 
+ *
  * @header: windows.h
  * @doc: https://docs.microsoft.com/en-us/windows/desktop/services/querying-a-service-s-configuration
  * @doc: https://docs.microsoft.com/en-us/windows/desktop/api/winsvc/ns-winsvc-_query_service_configa
  */
-class ConfigServiceWorker : public AsyncWorker {
+class ConfigServiceWorker : public Napi::AsyncWorker {
     public:
-        ConfigServiceWorker(Function& callback, string serviceName) : AsyncWorker(callback), serviceName(serviceName) {}
+        ConfigServiceWorker(Napi::Function& callback, string serviceName) : AsyncWorker(callback), serviceName(serviceName) {}
         ~ConfigServiceWorker() {}
 
     private:
@@ -296,7 +295,7 @@ class ConfigServiceWorker : public AsyncWorker {
             }
             description = (LPSERVICE_DESCRIPTION) HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, dwBytesNeeded);
         }
- 
+
         if (!QueryServiceConfig2(manager.service, SERVICE_CONFIG_DESCRIPTION, (LPBYTE) description, dwBytesNeeded, &dwBytesNeeded))  {
             manager.Close();
             return SetError("QueryServiceConfig2 failed (2)");
@@ -305,7 +304,7 @@ class ConfigServiceWorker : public AsyncWorker {
         manager.Close();
     }
 
-    void OnError(const Error& e) {
+    void OnError(const Napi::Error& e) {
         DWORD errorCode = GetLastError();
         stringstream error;
         error << e.what() << " for " << serviceName;
@@ -313,12 +312,12 @@ class ConfigServiceWorker : public AsyncWorker {
             error << " - code (" << errorCode << ") - " << getLastErrorMessage();
         }
 
-        Callback().Call({String::New(Env(), error.str()), Env().Null()});
+        Callback().Call({Napi::String::New(Env(), error.str()), Env().Null()});
     }
 
     void OnOK() {
-        HandleScope scope(Env());
-        Object ret = Object::New(Env());
+        Napi::HandleScope scope(Env());
+        Napi::Object ret = Napi::Object::New(Env());
 
         // Setup properties
         switch (config->dwServiceType) {
@@ -398,30 +397,30 @@ class ConfigServiceWorker : public AsyncWorker {
 /*
  * Retrieve Service configuration
  */
-Value getServiceConfiguration(const CallbackInfo& info) {
-    Env env = info.Env();
+Napi::Value getServiceConfiguration(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
 
     // Check if there is less than two argument, if then throw a JavaScript exception
     if (info.Length() < 2) {
-        Error::New(env, "Wrong number of argument provided!").ThrowAsJavaScriptException();
+        Napi::Error::New(env, "Wrong number of argument provided!").ThrowAsJavaScriptException();
         return env.Null();
     }
 
     // The first argument (serviceName) should be typeof Napi::String
     if (!info[0].IsString()) {
-        Error::New(env, "argument serviceName should be typeof string!").ThrowAsJavaScriptException();
+        Napi::Error::New(env, "argument serviceName should be typeof string!").ThrowAsJavaScriptException();
         return env.Null();
     }
 
     // callback should be a Napi::Function
     if (!info[1].IsFunction()) {
-        Error::New(env, "Argument callback should be a Function!").ThrowAsJavaScriptException();
+        Napi::Error::New(env, "Argument callback should be a Function!").ThrowAsJavaScriptException();
         return env.Null();
     }
 
     // Retrieve service Name and execute worker!
-    string serviceName = info[0].As<String>().Utf8Value();
-    Function cb = info[1].As<Function>();
+    string serviceName = info[0].As<Napi::String>().Utf8Value();
+    Napi::Function cb = info[1].As<Napi::Function>();
     (new ConfigServiceWorker(cb, serviceName))->Queue();
 
     return env.Undefined();
@@ -429,15 +428,15 @@ Value getServiceConfiguration(const CallbackInfo& info) {
 
 /*
  * Asynchronous Worker to retrieve all triggers of a given Service (name).
- * 
+ *
  * @header: windows.h
  * @doc: https://docs.microsoft.com/en-us/windows/desktop/taskschd/c-c-code-example-retrieving-trigger-strings
  * @doc: https://docs.microsoft.com/en-us/windows/desktop/api/winsvc/ns-winsvc-_service_trigger_info
  * @doc: https://docs.microsoft.com/en-us/windows/desktop/api/winsvc/ns-winsvc-_service_trigger_specific_data_item
  */
-class ServiceTriggersWorker : public AsyncWorker {
+class ServiceTriggersWorker : public Napi::AsyncWorker {
     public:
-        ServiceTriggersWorker(Function& callback, string serviceName) : AsyncWorker(callback), serviceName(serviceName) {}
+        ServiceTriggersWorker(Napi::Function& callback, string serviceName) : AsyncWorker(callback), serviceName(serviceName) {}
         ~ServiceTriggersWorker() {}
 
     private:
@@ -486,7 +485,7 @@ class ServiceTriggersWorker : public AsyncWorker {
         manager.Close();
     }
 
-    void OnError(const Error& e) {
+    void OnError(const Napi::Error& e) {
         DWORD errorCode = GetLastError();
         stringstream error;
         error << e.what() << " for " << serviceName;
@@ -494,19 +493,19 @@ class ServiceTriggersWorker : public AsyncWorker {
             error << " - code (" << errorCode << ") - " << getLastErrorMessage();
         }
 
-        Callback().Call({String::New(Env(), error.str()), Env().Null()});
+        Callback().Call({Napi::String::New(Env(), error.str()), Env().Null()});
     }
 
     void OnOK() {
-        HandleScope scope(Env());
+        Napi::HandleScope scope(Env());
 
         DWORD triggersLen = triggers->cTriggers;
-        Array ret = Array::New(Env(), triggersLen);
+        Napi::Array ret = Napi::Array::New(Env(), triggersLen);
         PSERVICE_TRIGGER currTrigger = triggers->pTriggers;
 
         for (unsigned i = 0; i < triggersLen; ++i, currTrigger++) {
-            Object trigger = Object::New(Env());
-            Array dataItems = Array::New(Env());
+            Napi::Object trigger = Napi::Object::New(Env());
+            Napi::Array dataItems = Napi::Array::New(Env());
 
             trigger.Set("type", currTrigger->dwTriggerType);
             trigger.Set("action", currTrigger->dwAction);
@@ -518,7 +517,7 @@ class ServiceTriggersWorker : public AsyncWorker {
             ret[i] = trigger;
             for (DWORD j = 0; j < currTrigger->cDataItems; j++) {
                 SERVICE_TRIGGER_SPECIFIC_DATA_ITEM pServiceTrigger = currTrigger->pDataItems[j];
-                Object specificDataItems = Object::New(Env());
+                Napi::Object specificDataItems = Napi::Object::New(Env());
                 dataItems[j] = specificDataItems;
 
                 specificDataItems.Set("dataType", pServiceTrigger.dwDataType);
@@ -544,30 +543,30 @@ class ServiceTriggersWorker : public AsyncWorker {
 /*
  * Retrieve Service triggers (interface binding).
  */
-Value getServiceTriggers(const CallbackInfo& info) {
-    Env env = info.Env();
+Napi::Value getServiceTriggers(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
 
     // Check if there is less than two argument, if then throw a JavaScript exception
     if (info.Length() < 2) {
-        Error::New(env, "Wrong number of argument provided!").ThrowAsJavaScriptException();
+        Napi::Error::New(env, "Wrong number of argument provided!").ThrowAsJavaScriptException();
         return env.Null();
     }
 
     // The first argument (serviceName) should be typeof Napi::String
     if (!info[0].IsString()) {
-        Error::New(env, "argument serviceName should be typeof string!").ThrowAsJavaScriptException();
+        Napi::Error::New(env, "argument serviceName should be typeof string!").ThrowAsJavaScriptException();
         return env.Null();
     }
 
     // callback should be a Napi::Function
     if (!info[1].IsFunction()) {
-        Error::New(env, "Argument callback should be a Function!").ThrowAsJavaScriptException();
+        Napi::Error::New(env, "Argument callback should be a Function!").ThrowAsJavaScriptException();
         return env.Null();
     }
 
     // Retrieve service Name and execute worker
-    string serviceName = info[0].As<String>().Utf8Value();
-    Function cb = info[1].As<Function>();
+    string serviceName = info[0].As<Napi::String>().Utf8Value();
+    Napi::Function cb = info[1].As<Napi::Function>();
     (new ServiceTriggersWorker(cb, serviceName))->Queue();
 
     return env.Undefined();
@@ -576,14 +575,14 @@ Value getServiceTriggers(const CallbackInfo& info) {
 
 /*
  * Asynchronous Worker to enumerate depending service of a given service!
- * 
+ *
  * @header: windows.h
  * @doc: https://docs.microsoft.com/en-us/windows/desktop/api/winsvc/nf-winsvc-enumdependentservicesa
  * @doc: https://docs.microsoft.com/en-us/windows/desktop/Services/stopping-a-service
  */
-class DependentServiceWorker : public AsyncWorker {
+class DependentServiceWorker : public Napi::AsyncWorker {
     public:
-        DependentServiceWorker(Function& callback, string serviceName, DWORD serviceState) :
+        DependentServiceWorker(Napi::Function& callback, string serviceName, DWORD serviceState) :
         AsyncWorker(callback), serviceName(serviceName), serviceState(serviceState) {}
         ~DependentServiceWorker() {}
 
@@ -634,7 +633,7 @@ class DependentServiceWorker : public AsyncWorker {
         manager.Close();
     }
 
-    void OnError(const Error& e) {
+    void OnError(const Napi::Error& e) {
         DWORD errorCode = GetLastError();
         stringstream error;
         error << e.what() << " for " << serviceName;
@@ -642,22 +641,22 @@ class DependentServiceWorker : public AsyncWorker {
             error << " - code (" << errorCode << ") - " << getLastErrorMessage();
         }
 
-        Callback().Call({String::New(Env(), error.str()), Env().Null()});
+        Callback().Call({Napi::String::New(Env(), error.str()), Env().Null()});
     }
 
     void OnOK() {
-        HandleScope scope(Env());
-        Object ret = Object::New(Env());
+        Napi::HandleScope scope(Env());
+        Napi::Object ret = Napi::Object::New(Env());
 
         ENUM_SERVICE_STATUSA service;
         for (DWORD i = 0; i < nbReturned; ++i) {
             SecureZeroMemory(&service, sizeof(service));
             service = *(lpDependencies + i);
-            Object JSObject = Object::New(Env());
+            Napi::Object JSObject = Napi::Object::New(Env());
 
             JSObject.Set("name", service.lpServiceName);
             JSObject.Set("displayName", service.lpDisplayName);
-            Object statusProcess = Object::New(Env());
+            Napi::Object statusProcess = Napi::Object::New(Env());
             statusProcess.Set("currentState", service.ServiceStatus.dwCurrentState);
             statusProcess.Set("checkpoint", service.ServiceStatus.dwCheckPoint);
             statusProcess.Set("controlsAccepted", service.ServiceStatus.dwControlsAccepted);
@@ -665,7 +664,7 @@ class DependentServiceWorker : public AsyncWorker {
             statusProcess.Set("serviceType", service.ServiceStatus.dwServiceType);
             statusProcess.Set("waitHint", service.ServiceStatus.dwWaitHint);
             statusProcess.Set("win32ExitCode", service.ServiceStatus.dwWin32ExitCode);
-            
+
             JSObject.Set("process", statusProcess);
             ret.Set(service.lpServiceName, JSObject);
         }
@@ -677,60 +676,57 @@ class DependentServiceWorker : public AsyncWorker {
 
 /*
  * Enumerate dependent Services!
- * 
+ *
  * @doc: https://docs.microsoft.com/en-us/windows/desktop/Services/stopping-a-service
  */
-Value enumDependentServices(const CallbackInfo& info) {
-    Env env = info.Env();
+Napi::Value enumDependentServices(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
     DWORD serviceState = SERVICE_STATE_ALL;
 
     // Check if there is less than two argument, if then throw a JavaScript exception
     if (info.Length() < 3) {
-        Error::New(env, "Wrong number of argument provided!").ThrowAsJavaScriptException();
+        Napi::Error::New(env, "Wrong number of argument provided!").ThrowAsJavaScriptException();
         return env.Null();
     }
 
     // The first argument (serviceName) should be typeof Napi::String
     if (!info[0].IsString()) {
-        Error::New(env, "argument serviceName should be typeof string!").ThrowAsJavaScriptException();
+        Napi::Error::New(env, "argument serviceName should be typeof string!").ThrowAsJavaScriptException();
         return env.Null();
     }
 
         // The first argument (desiredState) should be typeof Napi::Number
     if (!info[1].IsNumber()) {
-        Error::New(env, "Argument desiredState should be typeof number!").ThrowAsJavaScriptException();
+        Napi::Error::New(env, "Argument desiredState should be typeof number!").ThrowAsJavaScriptException();
         return env.Null();
     }
 
     // callback should be a Napi::Function
     if (!info[2].IsFunction()) {
-        Error::New(env, "Argument callback should be a Function!").ThrowAsJavaScriptException();
+        Napi::Error::New(env, "Argument callback should be a Function!").ThrowAsJavaScriptException();
         return env.Null();
     }
 
     // Retrieve service Name
-    string serviceName = info[0].As<String>().Utf8Value();
-    int32_t desiredState = info[1].As<Number>().Int32Value();
+    string serviceName = info[0].As<Napi::String>().Utf8Value();
+    int32_t desiredState = info[1].As<Napi::Number>().Int32Value();
     serviceState = getServiceState(desiredState);
-    Function cb = info[2].As<Function>();
+    Napi::Function cb = info[2].As<Napi::Function>();
     (new DependentServiceWorker(cb, serviceName, serviceState))->Queue();
 
     return env.Undefined();
 }
 
 /*
- * Initialize Node.JS Binding exports
- * 
+ * Initialize Node.js N-API binding exports
+ *
  * @header: napi.h
  */
-Object Init(Env env, Object exports) {
-
-    // Setup methods
-    // TODO: Launch with AsyncWorker to avoid event loop starvation
-    exports.Set("enumServicesStatus", Function::New(env, enumServicesStatus));
-    exports.Set("enumDependentServices", Function::New(env, enumDependentServices));
-    exports.Set("getServiceConfiguration", Function::New(env, getServiceConfiguration));
-    exports.Set("getServiceTriggers", Function::New(env, getServiceTriggers));
+Napi::Object Init(Napi::Env env, Napi::Object exports) {
+    exports.Set("enumServicesStatus", Napi::Function::New(env, enumServicesStatus));
+    exports.Set("enumDependentServices", Napi::Function::New(env, enumDependentServices));
+    exports.Set("getServiceConfiguration", Napi::Function::New(env, getServiceConfiguration));
+    exports.Set("getServiceTriggers", Napi::Function::New(env, getServiceTriggers));
 
     return exports;
 }

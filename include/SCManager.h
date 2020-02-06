@@ -4,8 +4,6 @@
 #include <windows.h>
 #include <string>
 
-using namespace std;
-
 struct EnumServicesResponse {
     bool status = true;
     ENUM_SERVICE_STATUS_PROCESS *lpBytes;
@@ -21,7 +19,7 @@ class SCManager {
         SCManager();
         bool Open(DWORD dwDesiredAccess);
         bool Close();
-        bool DeclareService(string serviceName, DWORD dwAccessRight);
+        bool DeclareService(std::string serviceName, DWORD dwAccessRight);
         EnumServicesResponse EnumServicesStatus(DWORD serviceState, DWORD* servicesNum);
         ServiceConfigResponse ServiceConfig();
         template<typename T> T ServiceConfig2(DWORD dwInfoLevel, bool allocate);
@@ -39,7 +37,7 @@ SCManager::SCManager() {
 
 /*
  * Open SCManager
- * 
+ *
  * @doc: https://docs.microsoft.com/en-us/windows/desktop/api/winsvc/nf-winsvc-openscmanagera
  */
 bool SCManager::Open(DWORD dwDesiredAccess) {
@@ -57,7 +55,7 @@ bool SCManager::Open(DWORD dwDesiredAccess) {
 
 /*
  * Close SCManager (and service handle is there is one!)
- * 
+ *
  * @doc: https://docs.microsoft.com/en-us/windows/desktop/api/winsvc/nf-winsvc-closeservicehandle
  */
 bool SCManager::Close() {
@@ -75,13 +73,13 @@ bool SCManager::Close() {
 
 /*
  * Open a new Service handle
- * 
+ *
  * @doc: https://docs.microsoft.com/en-us/windows/desktop/api/winsvc/nf-winsvc-openservicea
  * @note: OpenService "A" is used to support const char*
  */
-bool SCManager::DeclareService(string serviceName, DWORD dwAccessRight) {
-    service = OpenServiceA(manager, serviceName.c_str(), dwAccessRight); 
-    if (service == NULL) { 
+bool SCManager::DeclareService(std::string serviceName, DWORD dwAccessRight) {
+    service = OpenServiceA(manager, serviceName.c_str(), dwAccessRight);
+    if (service == NULL) {
         Close();
         return false;
     }
@@ -91,7 +89,7 @@ bool SCManager::DeclareService(string serviceName, DWORD dwAccessRight) {
 
 /*
  * Enumate Services Status
- * 
+ *
  * @doc: https://docs.microsoft.com/en-us/windows/desktop/api/winsvc/nf-winsvc-enumservicesstatusexa
  */
 EnumServicesResponse SCManager::EnumServicesStatus(DWORD serviceState, DWORD* servicesNum) {
@@ -127,7 +125,7 @@ EnumServicesResponse SCManager::EnumServicesStatus(DWORD serviceState, DWORD* se
 
 /**
  * Retrieve Service Configuration
- * 
+ *
  * @doc: https://docs.microsoft.com/en-us/windows/desktop/api/winsvc/nf-winsvc-queryserviceconfiga
  */
 ServiceConfigResponse SCManager::ServiceConfig() {
@@ -145,7 +143,7 @@ ServiceConfigResponse SCManager::ServiceConfig() {
         cbBufSize = dwBytesNeeded;
         ret.lpsc = (LPQUERY_SERVICE_CONFIG) LocalAlloc(LMEM_FIXED, cbBufSize);
     }
-  
+
     if(!QueryServiceConfig(service, ret.lpsc, cbBufSize, &dwBytesNeeded) ) {
         Close();
         return ret;
