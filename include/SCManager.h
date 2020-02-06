@@ -17,7 +17,7 @@ struct ServiceConfigResponse {
 class SCManager {
     public:
         SCManager();
-        bool Open(DWORD dwDesiredAccess);
+        bool Open(DWORD dwDesiredAccess, std::string host);
         bool Close();
         bool DeclareService(std::string serviceName, DWORD dwAccessRight);
         EnumServicesResponse EnumServicesStatus(DWORD serviceState, DWORD* servicesNum);
@@ -40,12 +40,13 @@ SCManager::SCManager() {
  *
  * @doc: https://docs.microsoft.com/en-us/windows/desktop/api/winsvc/nf-winsvc-openscmanagera
  */
-bool SCManager::Open(DWORD dwDesiredAccess) {
+bool SCManager::Open(DWORD dwDesiredAccess, std::string host) {
     if (dwDesiredAccess == NULL) {
         dwDesiredAccess = SC_MANAGER_ENUMERATE_SERVICE;
     }
-    manager = OpenSCManager(NULL, NULL, dwDesiredAccess);
-    if (NULL == manager) {
+
+    manager = OpenSCManagerA(host.c_str(), NULL, dwDesiredAccess);
+    if (manager == NULL) {
         return false;
     }
 
@@ -62,6 +63,7 @@ bool SCManager::Close() {
     if (!isOpen) {
         return false;
     }
+
     if (service != NULL) {
         CloseServiceHandle(service);
     }

@@ -1,4 +1,7 @@
 declare namespace Winservices {
+    export interface ServiceHost {
+        host: string;
+    }
 
     export interface ServiceStates {
         Active: 0,
@@ -51,7 +54,7 @@ declare namespace Winservices {
         data?: string;
     }
 
-    export function enumServicesStatus(desiredState?: keyof ServiceStates): Promise<Service[]>;
+    export function enumServicesStatus(desiredState?: keyof ServiceStates, options?: ServiceHost): Promise<Service[]>;
     export function getServiceConfiguration(serviceName: string): Promise<ServiceInformation>;
     export function getServiceTriggers(serviceName: string): Promise<ServiceTrigger[]>;
     export function enumDependentServices(serviceName: string, desiredState?: keyof ServiceStates): Promise<DependentServices>;

@@ -118,10 +118,11 @@ std::string byteSeqToString(const unsigned char bytes[], size_t n) {
  */
 class EnumServicesWorker : public Napi::AsyncWorker {
     public:
-        EnumServicesWorker(Napi::Function& callback, DWORD serviceState) : AsyncWorker(callback), serviceState(serviceState) {}
+        EnumServicesWorker(Napi::Function& callback, DWORD serviceState, std::string host) : AsyncWorker(callback), serviceState(serviceState) {}
         ~EnumServicesWorker() {}
 
     private:
+        std::string host;
         DWORD serviceState;
         ENUM_SERVICE_STATUS_PROCESS *lpServiceStatus;
         PROCESSESMAP *processesMap;
@@ -138,7 +139,7 @@ class EnumServicesWorker : public Napi::AsyncWorker {
             return SetError("Failed to retrieve process names and ids");
         }
 
-        success = manager.Open(SC_MANAGER_ENUMERATE_SERVICE);
+        success = manager.Open(SC_MANAGER_ENUMERATE_SERVICE, host);
         if (!success) {
             return SetError(FAILED_MANAGER);
         }
@@ -207,37 +208,6 @@ class EnumServicesWorker : public Napi::AsyncWorker {
 };
 
 /*
- * Enumerate Windows Services (binding interface).
- */
-Napi::Value enumServicesStatus(const Napi::CallbackInfo& info) {
-    Napi::Env env = info.Env();
-    int32_t desiredState;
-    DWORD serviceState = SERVICE_STATE_ALL;
-    Napi::Function cb;
-
-    if (info.Length() < 2) {
-        Napi::Error::New(env, "Wrong number of argument provided!").ThrowAsJavaScriptException();
-        return env.Null();
-    }
-    if (!info[0].IsNumber()) {
-        Napi::Error::New(env, "Argument desiredState should be typeof number!").ThrowAsJavaScriptException();
-        return env.Null();
-    }
-    if (!info[1].IsFunction()) {
-        Napi::Error::New(env, "Argument callback should be a Function!").ThrowAsJavaScriptException();
-        return env.Null();
-    }
-
-    desiredState = info[0].As<Napi::Number>().Int32Value();
-    cb = info[1].As<Napi::Function>();
-
-    serviceState = getServiceState(desiredState);
-    (new EnumServicesWorker(cb, serviceState))->Queue();
-
-    return env.Undefined();
-}
-
-/*
  * Asynchronous Worker to retrieve the configuration of a given Service (name)
  *
  * @header: windows.h
@@ -261,7 +231,7 @@ class ConfigServiceWorker : public Napi::AsyncWorker {
         DWORD dwBytesNeeded;
 
         // Open Manager!
-        success = manager.Open(SC_MANAGER_ENUMERATE_SERVICE);
+        success = manager.Open(SC_MANAGER_ENUMERATE_SERVICE, "");
         if (!success) {
             return SetError(FAILED_MANAGER);
         }
@@ -386,35 +356,6 @@ class ConfigServiceWorker : public Napi::AsyncWorker {
 };
 
 /*
- * Retrieve a given Service configuration (binding interface)
- */
-Napi::Value getServiceConfiguration(const Napi::CallbackInfo& info) {
-    Napi::Env env = info.Env();
-    std::string serviceName;
-    Napi::Function cb;
-
-    if (info.Length() < 2) {
-        Napi::Error::New(env, "Wrong number of argument provided!").ThrowAsJavaScriptException();
-        return env.Null();
-    }
-    if (!info[0].IsString()) {
-        Napi::Error::New(env, "argument serviceName should be typeof string!").ThrowAsJavaScriptException();
-        return env.Null();
-    }
-    if (!info[1].IsFunction()) {
-        Napi::Error::New(env, "Argument callback should be a Function!").ThrowAsJavaScriptException();
-        return env.Null();
-    }
-
-    serviceName = info[0].As<Napi::String>().Utf8Value();
-    cb = info[1].As<Napi::Function>();
-
-    (new ConfigServiceWorker(cb, serviceName))->Queue();
-
-    return env.Undefined();
-}
-
-/*
  * Asynchronous Worker to retrieve all triggers of a given Service (name).
  *
  * @header: windows.h
@@ -440,7 +381,7 @@ class ServiceTriggersWorker : public Napi::AsyncWorker {
         void* buf = NULL;
         DWORD dwBytesNeeded, cbBufSize;
 
-        success = manager.Open(SC_MANAGER_ENUMERATE_SERVICE);
+        success = manager.Open(SC_MANAGER_ENUMERATE_SERVICE, "");
         if (!success) {
             return SetError(FAILED_MANAGER);
         }
@@ -526,35 +467,6 @@ class ServiceTriggersWorker : public Napi::AsyncWorker {
 
 };
 
-/*
- * Retrieve a given service triggers (interface binding).
- */
-Napi::Value getServiceTriggers(const Napi::CallbackInfo& info) {
-    Napi::Env env = info.Env();
-    std::string serviceName;
-    Napi::Function cb;
-
-    if (info.Length() < 2) {
-        Napi::Error::New(env, "Wrong number of argument provided!").ThrowAsJavaScriptException();
-        return env.Null();
-    }
-    if (!info[0].IsString()) {
-        Napi::Error::New(env, "argument serviceName should be typeof string!").ThrowAsJavaScriptException();
-        return env.Null();
-    }
-    if (!info[1].IsFunction()) {
-        Napi::Error::New(env, "Argument callback should be a Function!").ThrowAsJavaScriptException();
-        return env.Null();
-    }
-
-    serviceName = info[0].As<Napi::String>().Utf8Value();
-    cb = info[1].As<Napi::Function>();
-
-    (new ServiceTriggersWorker(cb, serviceName))->Queue();
-
-    return env.Undefined();
-}
-
 
 /*
  * Asynchronous Worker to enumerate depending service of a given service!
@@ -582,7 +494,7 @@ class DependentServiceWorker : public Napi::AsyncWorker {
         DWORD dwBytesNeeded;
 
         // Open Manager!
-        success = manager.Open(SC_MANAGER_ENUMERATE_SERVICE);
+        success = manager.Open(SC_MANAGER_ENUMERATE_SERVICE, "");
         if (!success) {
             return SetError(FAILED_MANAGER);
         }
@@ -658,6 +570,103 @@ class DependentServiceWorker : public Napi::AsyncWorker {
     }
 
 };
+
+/*
+ * Enumerate Windows Services (binding interface).
+ */
+Napi::Value enumServicesStatus(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    int32_t desiredState;
+    DWORD serviceState = SERVICE_STATE_ALL;
+    Napi::Function cb;
+
+    if (info.Length() < 2) {
+        Napi::Error::New(env, "Wrong number of argument provided!").ThrowAsJavaScriptException();
+        return env.Null();
+    }
+    if (!info[0].IsNumber()) {
+        Napi::Error::New(env, "Argument desiredState should be typeof number!").ThrowAsJavaScriptException();
+        return env.Null();
+    }
+    if (!info[1].IsObject()) {
+        Napi::Error::New(env, "Argument options should be instanceof Object!").ThrowAsJavaScriptException();
+        return env.Null();
+    }
+    if (!info[2].IsFunction()) {
+        Napi::Error::New(env, "Argument callback should be a Function!").ThrowAsJavaScriptException();
+        return env.Null();
+    }
+
+    desiredState = info[0].As<Napi::Number>().Int32Value();
+    Napi::Object options = info[1].As<Napi::Object>();
+    cb = info[2].As<Napi::Function>();
+
+    std::string host = options.Get("host").As<Napi::String>().Utf8Value();
+    std::cout << "hostname: " << host << "\n";
+
+    serviceState = getServiceState(desiredState);
+    (new EnumServicesWorker(cb, serviceState, host))->Queue();
+
+    return env.Undefined();
+}
+
+/*
+ * Retrieve a given Service configuration (binding interface)
+ */
+Napi::Value getServiceConfiguration(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    std::string serviceName;
+    Napi::Function cb;
+
+    if (info.Length() < 2) {
+        Napi::Error::New(env, "Wrong number of argument provided!").ThrowAsJavaScriptException();
+        return env.Null();
+    }
+    if (!info[0].IsString()) {
+        Napi::Error::New(env, "argument serviceName should be typeof string!").ThrowAsJavaScriptException();
+        return env.Null();
+    }
+    if (!info[1].IsFunction()) {
+        Napi::Error::New(env, "Argument callback should be a Function!").ThrowAsJavaScriptException();
+        return env.Null();
+    }
+
+    serviceName = info[0].As<Napi::String>().Utf8Value();
+    cb = info[1].As<Napi::Function>();
+
+    (new ConfigServiceWorker(cb, serviceName))->Queue();
+
+    return env.Undefined();
+}
+
+/*
+ * Retrieve a given service triggers (interface binding).
+ */
+Napi::Value getServiceTriggers(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    std::string serviceName;
+    Napi::Function cb;
+
+    if (info.Length() < 2) {
+        Napi::Error::New(env, "Wrong number of argument provided!").ThrowAsJavaScriptException();
+        return env.Null();
+    }
+    if (!info[0].IsString()) {
+        Napi::Error::New(env, "argument serviceName should be typeof string!").ThrowAsJavaScriptException();
+        return env.Null();
+    }
+    if (!info[1].IsFunction()) {
+        Napi::Error::New(env, "Argument callback should be a Function!").ThrowAsJavaScriptException();
+        return env.Null();
+    }
+
+    serviceName = info[0].As<Napi::String>().Utf8Value();
+    cb = info[1].As<Napi::Function>();
+
+    (new ServiceTriggersWorker(cb, serviceName))->Queue();
+
+    return env.Undefined();
+}
 
 /*
  * Enumerate dependent Services!

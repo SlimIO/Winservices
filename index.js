@@ -22,6 +22,7 @@ const States = {
  * @memberof winservices#
  * @description Enumerate Windows Service by a given state
  * @param {!number} [desiredState=2] desired service State (Active, Inactive, All).
+ * @param {any} [options]
  * @returns {Promise<Winservices.Service[]>}
  *
  * @version 1.0.0
@@ -36,9 +37,12 @@ const States = {
  * }
  * main().catch(console.error)
  */
-function enumServicesStatus(desiredState = States.All) {
+function enumServicesStatus(desiredState = States.All, options = { host: "" }) {
     return new Promise((resolve, reject) => {
-        winservices.enumServicesStatus(desiredState, (error, services) => {
+        if (!Reflect.has(options, "host")) {
+            options.host = "";
+        }
+        winservices.enumServicesStatus(desiredState, options, (error, services) => {
             if (error) {
                 return reject(error);
             }
