@@ -4,9 +4,24 @@ declare namespace Winservices {
     }
 
     export interface ServiceStates {
-        Active: 0,
-        Inactive: 1,
-        All: 2
+        Active: 0;
+        Inactive: 1;
+        All: 2;
+    }
+
+    export interface TriggerActions {
+        start: 1;
+        stop: 2;
+    }
+
+    export interface TriggerTypes {
+        custom: 20;
+        deviceInterfaceArrival: 1;
+        addressAvailability: 2;
+        domainJoin: 3;
+        fireWallPortEvent: 4;
+        groupPolicy: 5;
+        networkEndpoint: 6;
     }
 
     export interface DependentServices {
@@ -58,9 +73,15 @@ declare namespace Winservices {
     export function getServiceConfiguration(serviceName: string): Promise<ServiceInformation>;
     export function getServiceTriggers(serviceName: string): Promise<ServiceTrigger[]>;
     export function enumDependentServices(serviceName: string, desiredState?: keyof ServiceStates): Promise<DependentServices>;
-    export const constants: {
-        readonly States: ServiceStates
-    };
+
+    export declare namespace constants {
+        export const States: ServiceStates
+
+        export const Trigger: {
+            type: TriggerTypes;
+            action: TriggerActions;
+        }
+    }
 }
 
 export as namespace Winservices;

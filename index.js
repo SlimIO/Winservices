@@ -6,15 +6,18 @@
  */
 const winservices = require("node-gyp-build")(__dirname);
 
-/**
- * @constant States
- * @type {Winservices.ServiceStates}
- */
-const States = {
-    Active: 0,
-    Inactive: 1,
-    All: 2
-};
+// CONSTANTS
+const kServiceStates = Object.freeze({ Active: 0, Inactive: 1, All: 2 });
+const kTriggerActions = Object.freeze({ start: 1, stop: 2 });
+const kTriggerTypes = Object.freeze({
+    custom: 20,
+    deviceInterfaceArrival: 1,
+    addressAvailability: 2,
+    domainJoin: 3,
+    fireWallPortEvent: 4,
+    groupPolicy: 5,
+    networkEndpoint: 6
+});
 
 /**
  * @async
@@ -37,7 +40,7 @@ const States = {
  * }
  * main().catch(console.error)
  */
-function enumServicesStatus(desiredState = States.All, options = { host: "" }) {
+function enumServicesStatus(desiredState = kServiceStates.All, options = { host: "" }) {
     return new Promise((resolve, reject) => {
         if (!Reflect.has(options, "host")) {
             options.host = "";
@@ -80,7 +83,7 @@ function enumServicesStatus(desiredState = States.All, options = { host: "" }) {
  * }
  * main().catch(console.error)
  */
-function enumDependentServices(serviceName, desiredState = States.All) {
+function enumDependentServices(serviceName, desiredState = kServiceStates.All) {
     return new Promise((resolve, reject) => {
         winservices.enumDependentServices(serviceName, desiredState, (error, dependentServices) => {
             if (error) {
@@ -181,5 +184,11 @@ module.exports = {
     enumDependentServices,
     getServiceConfiguration,
     getServiceTriggers,
-    constants: Object.freeze({ States })
+    constants: Object.freeze({
+        States: kServiceStates,
+        Trigger: Object.freeze({
+            action: kTriggerActions,
+            type: kTriggerTypes
+        })
+    })
 };
