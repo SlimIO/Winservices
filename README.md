@@ -7,7 +7,6 @@
 ![size](https://img.shields.io/bundlephobia/min/@slimio/winservices.svg)
 [![Known Vulnerabilities](https://snyk.io/test/github/SlimIO/Winservices/badge.svg?targetFile=package.json)](https://snyk.io/test/github/SlimIO/Winservices?targetFile=package.json)
 [![Build Status](https://travis-ci.com/SlimIO/Winservices.svg?branch=master)](https://travis-ci.com/SlimIO/Winservices)
-[![Greenkeeper badge](https://badges.greenkeeper.io/SlimIO/Winservices.svg)](https://greenkeeper.io/)
 
 SlimIO Windows Services is a Node.js Binding which expose low-level Microsoft APIs to fetch Services state, configuration and triggers.
 
